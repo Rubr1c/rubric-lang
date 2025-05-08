@@ -185,22 +185,4 @@ export class Lexer {
     this.readChar();
     return strContent;
   }
-
-  private readFunctionArg(): string {
-    const startPosition = this.position + 1;
-    this.readChar();
-
-    while (this.char !== null && this.char !== ',' && this.char !== ')') {
-      this.readChar();
-    }
-
-    if (this.char === null) throw new Error('unterminated function call');
-
-    if (this.char === ')') this.readingFuncArgs = false;
-    else this.readingFuncArgs = true;
-
-    const strContent = this.input.substring(startPosition, this.position);
-    this.readChar();
-    return strContent;
-  }
 }
