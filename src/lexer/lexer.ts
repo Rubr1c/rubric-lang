@@ -125,11 +125,12 @@ export class Lexer {
     this.position = this.readPosition;
 
     if (this.char !== null) {
-      if (/(\r\n|\r|\n)/.test(this.char)) {
+      if (this.char === '\n') {
         this.line++;
         this.column = 0;
+      } else if (this.char !== '\r') {
+        this.column++;
       }
-      this.column++;
     }
 
     this.readPosition++;
