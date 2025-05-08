@@ -125,4 +125,66 @@ describe('Lexer', () => {
     ];
     assertTokens(input, expected);
   });
+
+  it('should tokenize two-character operators', () => {
+    const input = '== != <= >=';
+    const expected: ExpectedToken[] = [
+      { type: TokenType.EQUALS_EQUALS, literal: '==' },
+      { type: TokenType.NOT_EQUALS, literal: '!=' },
+      { type: TokenType.LT_EQUALS, literal: '<=' },
+      { type: TokenType.GT_EQUALS, literal: '>=' },
+    ];
+    assertTokens(input, expected);
+  });
+
+  it('should tokenize increment and decrement operators', () => {
+    const input = '++ --';
+    const expected: ExpectedToken[] = [
+      { type: TokenType.INCREMENT, literal: '++' },
+      { type: TokenType.DECREMENT, literal: '--' },
+    ];
+    assertTokens(input, expected);
+  });
+
+  it('should tokenize braces', () => {
+    const input = '{}';
+    const expected: ExpectedToken[] = [
+      { type: TokenType.LCURLY, literal: '{' },
+      { type: TokenType.RCURLY, literal: '}' },
+    ];
+    assertTokens(input, expected);
+  });
+
+  it('should recognize control flow keywords', () => {
+    const input = 'if else for while return';
+    const expected: ExpectedToken[] = [
+      { type: TokenType.IF_STATEMENT, literal: 'if' },
+      { type: TokenType.ELSE_STATEMENT, literal: 'else' },
+      { type: TokenType.FOR_STATEMENT, literal: 'for' },
+      { type: TokenType.WHILE_STATEMENT, literal: 'while' },
+      { type: TokenType.RETURN_STATEMENT, literal: 'return' },
+    ];
+    assertTokens(input, expected);
+  });
+
+  it('should skip single-line and block comments', () => {
+    const input = `// line comment
+var a=1;
+/* block
+comment */
+var b=2;`;
+    const expectedTokens: ExpectedToken[] = [
+      { type: TokenType.VAR, literal: 'var' },
+      { type: TokenType.IDENTIFIER, literal: 'a' },
+      { type: TokenType.EQUALS, literal: '=' },
+      { type: TokenType.NUMBER, literal: '1' },
+      { type: TokenType.SEMICOLON, literal: ';' },
+      { type: TokenType.VAR, literal: 'var' },
+      { type: TokenType.IDENTIFIER, literal: 'b' },
+      { type: TokenType.EQUALS, literal: '=' },
+      { type: TokenType.NUMBER, literal: '2' },
+      { type: TokenType.SEMICOLON, literal: ';' },
+    ];
+    assertTokens(input, expectedTokens);
+  });
 });
