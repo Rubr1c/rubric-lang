@@ -29,6 +29,30 @@ export class Lexer {
       case ';':
         token = this.createToken(TokenType.SEMICOLON);
         break;
+      case '+':
+        token = this.createToken(TokenType.PLUS);
+        break;
+      case '-':
+        token = this.createToken(TokenType.MINUS);
+        break;
+      case '*':
+        token = this.createToken(TokenType.ASTERISK);
+        break;
+      case '/':
+        token = this.createToken(TokenType.SLASH);
+        break;
+      case '%':
+        token = this.createToken(TokenType.PERCENT);
+        break;
+      case '<':
+        token = this.createToken(TokenType.LT);
+        break;
+      case '>':
+        token = this.createToken(TokenType.GT);
+        break;
+      case '!':
+        token = this.createToken(TokenType.BANG);
+        break;
       case '(':
         token = this.createToken(TokenType.LPAREN);
         break;
