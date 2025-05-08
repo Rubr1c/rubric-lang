@@ -9,6 +9,9 @@ export enum TokenType {
   EQUALS = '=',
   COLON = ':',
   SEMICOLON = ';',
+  LPAREN = '(',
+  RPAREN = ')',
+  COMMA = ',',
 
   TYPE_STRING = 'TYPE_STRING',
   TYPE_INT = 'TYPE_INT',

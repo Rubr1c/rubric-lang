@@ -7,6 +7,7 @@ export class Lexer {
   private char: string | null = null;
   private line: number = 1;
   private column: number = 0;
+  private readingFuncArgs: boolean = false;
 
   constructor(input: string) {
     this.input = input;
@@ -27,6 +28,15 @@ export class Lexer {
         break;
       case ';':
         token = this.createToken(TokenType.SEMICOLON);
+        break;
+      case '(':
+        token = this.createToken(TokenType.LPAREN);
+        break;
+      case ')':
+        token = this.createToken(TokenType.RPAREN);
+        break;
+      case ',':
+        token = this.createToken(TokenType.COMMA);
         break;
       case null:
         token = this.createToken(TokenType.EOF);
@@ -170,6 +180,24 @@ export class Lexer {
     while (this.char !== null && this.char !== quoteType) this.readChar();
 
     if (this.char === null) throw new Error('unterminated string');
+
+    const strContent = this.input.substring(startPosition, this.position);
+    this.readChar();
+    return strContent;
+  }
+
+  private readFunctionArg(): string {
+    const startPosition = this.position + 1;
+    this.readChar();
+
+    while (this.char !== null && this.char !== ',' && this.char !== ')') {
+      this.readChar();
+    }
+
+    if (this.char === null) throw new Error('unterminated function call');
+
+    if (this.char === ')') this.readingFuncArgs = false;
+    else this.readingFuncArgs = true;
 
     const strContent = this.input.substring(startPosition, this.position);
     this.readChar();
