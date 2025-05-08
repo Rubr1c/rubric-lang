@@ -134,6 +134,9 @@ export class Lexer {
       case ',':
         token = this.createToken(TokenType.COMMA);
         break;
+      case '.':
+        token = this.createToken(TokenType.DOT);
+        break;
       case '?':
         token = this.createToken(TokenType.QUESTION_MARK);
         break;

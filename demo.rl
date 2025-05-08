@@ -1,4 +1,4 @@
-printf("Hello World\nHello World");
+printf("Hello World");
 // comment 
 var a = 10.023;
 var b = 20;
@@ -10,4 +10,5 @@ var d: bool;
 var e: string;
 var f: int;
 a--;
+a.x;
 print(a * b /3 % 2 < 4 >= 3 !=  2 + 1 == 2 || 3 && 2);
