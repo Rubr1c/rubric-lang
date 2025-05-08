@@ -22,6 +22,12 @@ export enum TokenType {
   LT = '<',
   GT = '>',
   BANG = '!',
+  EQUALS_EQUALS = '==',
+  NOT_EQUALS = '!=',
+  LT_EQUALS = '<=',
+  GT_EQUALS = '>=',
+  INCREMENT = '++',
+  DECREMENT = '--',
 
   IF_STATEMENT = 'IF_STATEMENT',
   ELSE_STATEMENT = 'ELSE_STATEMENT',

@@ -21,7 +21,18 @@ export class Lexer {
 
     switch (this.char) {
       case '=':
-        token = this.createToken(TokenType.EQUALS);
+        if (this.peekChar() === '=') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.EQUALS_EQUALS,
+            literal: '==',
+            line: this.line,
+            column: startCol,
+          };
+        } else {
+          token = this.createToken(TokenType.EQUALS);
+        }
         break;
       case ':':
         token = this.createToken(TokenType.COLON);
@@ -30,10 +41,32 @@ export class Lexer {
         token = this.createToken(TokenType.SEMICOLON);
         break;
       case '+':
-        token = this.createToken(TokenType.PLUS);
+        if (this.peekChar() === '+') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.INCREMENT,
+            literal: '++',
+            line: this.line,
+            column: startCol,
+          };
+        } else {
+          token = this.createToken(TokenType.PLUS);
+        }
         break;
       case '-':
-        token = this.createToken(TokenType.MINUS);
+        if (this.peekChar() === '-') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.DECREMENT,
+            literal: '--',
+            line: this.line,
+            column: startCol,
+          };
+        } else {
+          token = this.createToken(TokenType.MINUS);
+        }
         break;
       case '*':
         token = this.createToken(TokenType.ASTERISK);
@@ -45,13 +78,46 @@ export class Lexer {
         token = this.createToken(TokenType.PERCENT);
         break;
       case '<':
-        token = this.createToken(TokenType.LT);
+        if (this.peekChar() === '=') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.LT_EQUALS,
+            literal: '<=',
+            line: this.line,
+            column: startCol,
+          };
+        } else {
+          token = this.createToken(TokenType.LT);
+        }
         break;
       case '>':
-        token = this.createToken(TokenType.GT);
+        if (this.peekChar() === '=') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.GT_EQUALS,
+            literal: '>=',
+            line: this.line,
+            column: startCol,
+          };
+        } else {
+          token = this.createToken(TokenType.GT);
+        }
         break;
       case '!':
-        token = this.createToken(TokenType.BANG);
+        if (this.peekChar() === '=') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.NOT_EQUALS,
+            literal: '!=',
+            line: this.line,
+            column: startCol,
+          };
+        } else {
+          token = this.createToken(TokenType.BANG);
+        }
         break;
       case '(':
         token = this.createToken(TokenType.LPAREN);
