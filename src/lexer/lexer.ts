@@ -17,7 +17,7 @@ export class Lexer {
   public nextToken(): Token {
     let token: Token;
 
-    this.skipWhitespace();
+    this.skipWhitespaceAndComments();
 
     switch (this.char) {
       case '=':
@@ -39,31 +39,7 @@ export class Lexer {
         token = this.createToken(TokenType.ASTERISK);
         break;
       case '/':
-        if (this.peekChar() === '/') {
-          this.readChar();
-          this.readChar();
-          const commentStartCol = this.column;
-          const commentString = this.readLine();
-          return {
-            type: TokenType.COMMENT,
-            literal: commentString,
-            line: this.line,
-            column: commentStartCol,
-          };
-        } else if (this.peekChar() === '*') {
-          this.readChar();
-          this.readChar();
-          const commentStartCol = this.column;
-          const commentString = this.readMultilineComment();
-          return {
-            type: TokenType.BLOCK_COMMENT,
-            literal: commentString,
-            line: this.line,
-            column: commentStartCol,
-          };
-        } else {
-          token = this.createToken(TokenType.SLASH);
-        }
+        token = this.createToken(TokenType.SLASH);
         break;
       case '%':
         token = this.createToken(TokenType.PERCENT);
@@ -168,10 +144,27 @@ export class Lexer {
     return this.input[this.readPosition];
   }
 
-  private skipWhitespace(): void {
-    if (this.char === null) return;
+  private skipWhitespaceAndComments(): void {
+    while (true) {
+      if (this.char === null) return;
 
-    while (/\s/.test(this.char)) this.readChar();
+      if (/\s/.test(this.char)) {
+        this.readChar();
+        continue;
+      }
+
+      if (this.char === '/' && this.peekChar() === '/') {
+        this.skipSingleLineComment();
+        continue;
+      }
+
+      if (this.char === '/' && this.peekChar() === '*') {
+        this.skipBlockComment();
+        continue;
+      }
+
+      break;
+    }
   }
 
   private isLetter(char: string | null): boolean {
@@ -235,24 +228,24 @@ export class Lexer {
     return strContent;
   }
 
-  private readLine(): string {
-    const startPosition = this.position;
-
-    while (this.char !== null && !/(\r\n|\r|\n)/.test(this.char))
-      this.readChar();
-
-    return this.input.substring(startPosition, this.position);
-  }
-
-  private readMultilineComment(): string {
-    const startPosition = this.position;
-
-    while (this.char !== null && this.char !== '*' && this.peekChar() !== '/') {
+  private skipSingleLineComment(): void {
+    this.readChar();
+    this.readChar();
+    while (this.char !== '\n' && this.char !== null) {
       this.readChar();
     }
+  }
 
-    const comment = this.input.substring(startPosition, this.position - 1);
+  private skipBlockComment(): void {
     this.readChar();
-    return comment;
+    this.readChar();
+    while (this.char !== null) {
+      if (this.char === '*' && this.peekChar() === '/') {
+        this.readChar();
+        this.readChar();
+        break;
+      }
+      this.readChar();
+    }
   }
 }
