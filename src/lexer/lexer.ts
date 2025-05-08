@@ -59,6 +59,12 @@ export class Lexer {
       case ')':
         token = this.createToken(TokenType.RPAREN);
         break;
+      case '{':
+        token = this.createToken(TokenType.LCURLY);
+        break;
+      case '}':
+        token = this.createToken(TokenType.RCURLY);
+        break;
       case ',':
         token = this.createToken(TokenType.COMMA);
         break;
@@ -79,11 +85,11 @@ export class Lexer {
         return token;
       default:
         if (this.isLetter(this.char)) {
-          const identStartCol = this.column;
+          const indentStartCol = this.column;
           const literal = this.readIdentifier();
           const type = this.lookupIdentifier(literal);
 
-          token = { type, literal, line: this.line, column: identStartCol };
+          token = { type, literal, line: this.line, column: indentStartCol };
           return token;
         } else if (this.isDigit(this.char)) {
           const numStartCol = this.column;
@@ -193,6 +199,16 @@ export class Lexer {
         return TokenType.TYPE_BOOLEAN;
       case 'int':
         return TokenType.TYPE_INT;
+      case 'if':
+        return TokenType.IF_STATEMENT;
+      case 'else':
+        return TokenType.ELSE_STATEMENT;
+      case 'for':
+        return TokenType.FOR_STATEMENT;
+      case 'while':
+        return TokenType.WHILE_STATEMENT;
+      case 'return':
+        return TokenType.RETURN_STATEMENT;
       case 'true':
       case 'false':
         return TokenType.BOOLEAN;

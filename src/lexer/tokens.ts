@@ -11,6 +11,8 @@ export enum TokenType {
   SEMICOLON = ';',
   LPAREN = '(',
   RPAREN = ')',
+  LCURLY = '{',
+  RCURLY = '}',
   COMMA = ',',
   PLUS = '+',
   MINUS = '-',
@@ -20,8 +22,12 @@ export enum TokenType {
   LT = '<',
   GT = '>',
   BANG = '!',
-  COMMENT = 'COMMENT',
-  BLOCK_COMMENT = 'BLOCK_COMMENT',
+
+  IF_STATEMENT = 'IF_STATEMENT',
+  ELSE_STATEMENT = 'ELSE_STATEMENT',
+  FOR_STATEMENT = 'FOR_STATEMENT',
+  WHILE_STATEMENT = 'WHITE_STATEMENT',
+  RETURN_STATEMENT = 'RETURN_STATEMENT',
 
   TYPE_STRING = 'TYPE_STRING',
   TYPE_INT = 'TYPE_INT',
