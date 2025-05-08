@@ -134,6 +134,37 @@ export class Lexer {
       case ',':
         token = this.createToken(TokenType.COMMA);
         break;
+      case '?':
+        token = this.createToken(TokenType.QUESTION_MARK);
+        break;
+      case '&':
+        if (this.peekChar() === '&') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.AND,
+            literal: '&&',
+            line: this.line,
+            column: startCol,
+          };
+        } else {
+          token = this.createToken(TokenType.ILLEGAL);
+        }
+        break;
+      case '|':
+        if (this.peekChar() === '|') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.OR,
+            literal: '||',
+            line: this.line,
+            column: startCol,
+          };
+        } else {
+          token = this.createToken(TokenType.ILLEGAL);
+        }
+        break;
       case null:
         token = this.createToken(TokenType.EOF);
         break;
