@@ -1,4 +1,4 @@
-printf("Hello World");
+printf("Hello World\nHello World");
 // comment 
 var a = 10.023;
 var b = 20;

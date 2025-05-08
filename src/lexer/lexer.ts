@@ -340,16 +340,50 @@ export class Lexer {
   }
 
   private readString(quoteType: '"' | "'"): string {
-    const startPosition = this.position + 1;
+    let result = '';
+    // skip the opening quote
     this.readChar();
 
-    while (this.char !== null && this.char !== quoteType) this.readChar();
+    while (this.char !== null && this.char !== quoteType) {
+      const nextChar = this.peekChar();
+      if (this.char === '\\') {
+        this.readChar();
+        if (nextChar === null) break;
 
-    if (this.char === null) throw new Error('unterminated string');
+        switch (nextChar) {
+          case 'n':
+            result += '\n';
+            break;
+          case 'r':
+            result += '\r';
+            break;
+          case 't':
+            result += '\t';
+            break;
+          case '"':
+            result += '"';
+            break;
+          case "'":
+            result += "'";
+            break;
+          case '\\':
+            result += '\\';
+            break;
+          default:
+            result += this.char;
+        }
+      } else {
+        result += this.char;
+      }
+      this.readChar();
+    }
 
-    const strContent = this.input.substring(startPosition, this.position);
+    if (this.char !== quoteType) {
+      throw new Error(`Unterminated string literal at line ${this.line}`);
+    }
+
     this.readChar();
-    return strContent;
+    return result;
   }
 
   private skipSingleLineComment(): void {
