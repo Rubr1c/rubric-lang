@@ -26,7 +26,7 @@ export class Lexer {
         token = this.createToken(TokenType.COLON);
         break;
       case ';':
-        token = this.createToken(TokenType.EQUALS);
+        token = this.createToken(TokenType.SEMICOLON);
         break;
       case null:
         token = this.createToken(TokenType.EOF);
