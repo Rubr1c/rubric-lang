@@ -11,7 +11,7 @@ export enum TokenType {
   SEMICOLON = ';',
 
   TYPE_STRING = 'TYPE_STRING',
-  TYPE_NUMBER = 'TYPE_NUMBER',
+  TYPE_INT = 'TYPE_INT',
   TYPE_BOOLEAN = 'TYPE_BOOLEAN',
 
   ILLEGAL = 'ILLEGAL',
