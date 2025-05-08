@@ -2,7 +2,8 @@ export enum TokenType {
   VAR = 'VAR',
 
   IDENTIFIER = 'IDENTIFIER',
-  NUMBER = 'NUMBER',
+  INT = 'INT',
+  FLOAT = 'FLOAT',
   STRING = 'STRING',
   BOOLEAN = 'BOOLEAN',
 
@@ -42,6 +43,7 @@ export enum TokenType {
 
   TYPE_STRING = 'TYPE_STRING',
   TYPE_INT = 'TYPE_INT',
+  TYPE_FLOAT = 'TYPE_FLOAT',
   TYPE_BOOLEAN = 'TYPE_BOOLEAN',
 
   ILLEGAL = 'ILLEGAL',

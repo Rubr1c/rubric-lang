@@ -190,9 +190,9 @@ export class Lexer {
           return token;
         } else if (this.isDigit(this.char)) {
           const numStartCol = this.column;
-          const literal = this.readNumber();
+          const [literal, tokenType] = this.readNumber();
           token = {
-            type: TokenType.NUMBER,
+            type: tokenType,
             literal,
             line: this.line,
             column: numStartCol,
@@ -296,6 +296,8 @@ export class Lexer {
         return TokenType.TYPE_BOOLEAN;
       case 'int':
         return TokenType.TYPE_INT;
+      case 'float':
+        return TokenType.TYPE_FLOAT;
       case 'if':
         return TokenType.IF_STATEMENT;
       case 'else':
@@ -320,12 +322,21 @@ export class Lexer {
     return /\d/.test(char);
   }
 
-  private readNumber(): string {
+  private readNumber(): [string, TokenType] {
     const startPosition = this.position;
-
-    while (this.isDigit(this.char)) this.readChar();
-
-    return this.input.substring(startPosition, this.position);
+    while (this.isDigit(this.char)) {
+      this.readChar();
+    }
+    let type = TokenType.INT;
+    if (this.char === '.' && this.isDigit(this.peekChar())) {
+      this.readChar();
+      while (this.isDigit(this.char)) {
+        this.readChar();
+      }
+      type = TokenType.FLOAT;
+    }
+    const literal = this.input.substring(startPosition, this.position);
+    return [literal, type];
   }
 
   private readString(quoteType: '"' | "'"): string {

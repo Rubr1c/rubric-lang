@@ -63,11 +63,11 @@ describe('Lexer', () => {
     assertTokens(input, expected);
   });
 
-  it('should tokenize numbers', () => {
+  it('should tokenize INTs', () => {
     const input = '123 45670';
     const expected: ExpectedToken[] = [
-      { type: TokenType.NUMBER, literal: '123', line: 1, column: 1 },
-      { type: TokenType.NUMBER, literal: '45670', line: 1, column: 5 },
+      { type: TokenType.INT, literal: '123', line: 1, column: 1 },
+      { type: TokenType.INT, literal: '45670', line: 1, column: 5 },
     ];
     assertTokens(input, expected);
   });
@@ -109,17 +109,17 @@ describe('Lexer', () => {
       { type: TokenType.ASTERISK, literal: '*', line: 1, column: 9 },
       { type: TokenType.IDENTIFIER, literal: 'b', line: 1, column: 11 },
       { type: TokenType.SLASH, literal: '/', line: 1, column: 13 },
-      { type: TokenType.NUMBER, literal: '3', line: 1, column: 14 },
+      { type: TokenType.INT, literal: '3', line: 1, column: 14 },
       { type: TokenType.PERCENT, literal: '%', line: 1, column: 16 },
-      { type: TokenType.NUMBER, literal: '2', line: 1, column: 18 },
+      { type: TokenType.INT, literal: '2', line: 1, column: 18 },
       { type: TokenType.LT, literal: '<', line: 1, column: 20 },
-      { type: TokenType.NUMBER, literal: '4', line: 1, column: 22 },
+      { type: TokenType.INT, literal: '4', line: 1, column: 22 },
       { type: TokenType.GT, literal: '>', line: 1, column: 24 },
-      { type: TokenType.NUMBER, literal: '3', line: 1, column: 26 },
+      { type: TokenType.INT, literal: '3', line: 1, column: 26 },
       { type: TokenType.BANG, literal: '!', line: 1, column: 28 },
-      { type: TokenType.NUMBER, literal: '2', line: 1, column: 30 }, // Note space after !
+      { type: TokenType.INT, literal: '2', line: 1, column: 30 }, // Note space after !
       { type: TokenType.PLUS, literal: '+', line: 1, column: 32 },
-      { type: TokenType.NUMBER, literal: '1', line: 1, column: 34 },
+      { type: TokenType.INT, literal: '1', line: 1, column: 34 },
       { type: TokenType.RPAREN, literal: ')', line: 1, column: 35 },
       { type: TokenType.SEMICOLON, literal: ';', line: 1, column: 36 },
     ];
@@ -177,12 +177,12 @@ var b=2;`;
       { type: TokenType.VAR, literal: 'var' },
       { type: TokenType.IDENTIFIER, literal: 'a' },
       { type: TokenType.EQUALS, literal: '=' },
-      { type: TokenType.NUMBER, literal: '1' },
+      { type: TokenType.INT, literal: '1' },
       { type: TokenType.SEMICOLON, literal: ';' },
       { type: TokenType.VAR, literal: 'var' },
       { type: TokenType.IDENTIFIER, literal: 'b' },
       { type: TokenType.EQUALS, literal: '=' },
-      { type: TokenType.NUMBER, literal: '2' },
+      { type: TokenType.INT, literal: '2' },
       { type: TokenType.SEMICOLON, literal: ';' },
     ];
     assertTokens(input, expectedTokens);
