@@ -187,4 +187,34 @@ var b=2;`;
     ];
     assertTokens(input, expectedTokens);
   });
+
+  it('should tokenize floating-point numbers', () => {
+    const input = '3.14 0.5 10.0';
+    const expected: ExpectedToken[] = [
+      { type: TokenType.FLOAT, literal: '3.14', line: 1, column: 1 },
+      { type: TokenType.FLOAT, literal: '0.5', line: 1, column: 6 },
+      { type: TokenType.FLOAT, literal: '10.0', line: 1, column: 10 },
+    ];
+    assertTokens(input, expected);
+  });
+
+  it('should tokenize dot, question mark, and logical AND/OR', () => {
+    const input = '. ? && ||';
+    const expected: ExpectedToken[] = [
+      { type: TokenType.DOT, literal: '.' },
+      { type: TokenType.QUESTION_MARK, literal: '?' },
+      { type: TokenType.AND, literal: '&&' },
+      { type: TokenType.OR, literal: '||' },
+    ];
+    assertTokens(input, expected);
+  });
+
+  it('should tokenize escape sequences in strings', () => {
+    const input = '"line\\nbreak" "quote\\"inside"';
+    const expected: ExpectedToken[] = [
+      { type: TokenType.STRING, literal: 'line\nbreak', line: 1, column: 1 },
+      { type: TokenType.STRING, literal: 'quote"inside', line: 1, column: 15 },
+    ];
+    assertTokens(input, expected);
+  });
 });
