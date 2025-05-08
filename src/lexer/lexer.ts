@@ -39,7 +39,31 @@ export class Lexer {
         token = this.createToken(TokenType.ASTERISK);
         break;
       case '/':
-        token = this.createToken(TokenType.SLASH);
+        if (this.peekChar() === '/') {
+          this.readChar();
+          this.readChar();
+          const commentStartCol = this.column;
+          const commentString = this.readLine();
+          return {
+            type: TokenType.COMMENT,
+            literal: commentString,
+            line: this.line,
+            column: commentStartCol,
+          };
+        } else if (this.peekChar() === '*') {
+          this.readChar();
+          this.readChar();
+          const commentStartCol = this.column;
+          const commentString = this.readMultilineComment();
+          return {
+            type: TokenType.BLOCK_COMMENT,
+            literal: commentString,
+            line: this.line,
+            column: commentStartCol,
+          };
+        } else {
+          token = this.createToken(TokenType.SLASH);
+        }
         break;
       case '%':
         token = this.createToken(TokenType.PERCENT);
@@ -209,5 +233,26 @@ export class Lexer {
     const strContent = this.input.substring(startPosition, this.position);
     this.readChar();
     return strContent;
+  }
+
+  private readLine(): string {
+    const startPosition = this.position;
+
+    while (this.char !== null && !/(\r\n|\r|\n)/.test(this.char))
+      this.readChar();
+
+    return this.input.substring(startPosition, this.position);
+  }
+
+  private readMultilineComment(): string {
+    const startPosition = this.position;
+
+    while (this.char !== null && this.char !== '*' && this.peekChar() !== '/') {
+      this.readChar();
+    }
+
+    const comment = this.input.substring(startPosition, this.position - 1);
+    this.readChar();
+    return comment;
   }
 }

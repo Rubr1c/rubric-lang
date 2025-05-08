@@ -20,6 +20,8 @@ export enum TokenType {
   LT = '<',
   GT = '>',
   BANG = '!',
+  COMMENT = 'COMMENT',
+  BLOCK_COMMENT = 'BLOCK_COMMENT',
 
   TYPE_STRING = 'TYPE_STRING',
   TYPE_INT = 'TYPE_INT',
