@@ -79,8 +79,8 @@ describe('AST Nodes', () => {
 
     const postfix = new PostfixExpression(
       { type: TokenType.INCREMENT, literal: '++' },
-      '++',
-      a
+      a,
+      '++'
     );
     expect(postfix.toString()).toBe('(a++)');
 
