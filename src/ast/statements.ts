@@ -219,3 +219,14 @@ export class DoWhileStatement implements Statement {
   }
 }
 
+export class ExpressionStatement implements Statement {
+  constructor(public token: Token, public expression: Expression) {}
+
+  tokenLiteral(): string {
+    return this.token.literal;
+  }
+
+  toString(): string {
+    return this.expression.toString();
+  }
+}
