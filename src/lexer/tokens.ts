@@ -1,5 +1,6 @@
 export enum TokenType {
   VAR = 'VAR',
+  CONST = 'CONST',
 
   IDENTIFIER = 'IDENTIFIER',
   INT = 'INT',

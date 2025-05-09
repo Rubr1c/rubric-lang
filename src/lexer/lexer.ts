@@ -293,6 +293,8 @@ export class Lexer {
     switch (identifier) {
       case 'var':
         return TokenType.VAR;
+      case 'const':
+        return TokenType.CONST;
       case 'string':
         return TokenType.TYPE_STRING;
       case 'bool':
