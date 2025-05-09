@@ -11,6 +11,7 @@ import {
   FloatLiteral,
   StringLiteral,
   BooleanLiteral,
+  ConstStatement,
 } from '../ast';
 
 export class Parser {
@@ -62,6 +63,8 @@ export class Parser {
     switch (this.curToken.type) {
       case TokenType.VAR:
         return this.parseVarStatement();
+      case TokenType.CONST:
+        return this.parseConstStatement();
       default:
         return null;
     }
@@ -93,6 +96,34 @@ export class Parser {
       return null;
     }
     return new VarStatement(token, name, typeAnnotation, expression);
+  }
+
+  private parseConstStatement(): Statement | null {
+    const token = this.curToken;
+    if (!this.expectPeek(TokenType.IDENTIFIER)) {
+      return null;
+    }
+    const name = new Identifier(this.curToken, this.curToken.literal);
+    let typeAnnotation: TypeNode | null = null;
+    if (this.peekToken.type === TokenType.COLON) {
+      this.nextToken();
+      this.nextToken();
+      typeAnnotation = new TypeNode(this.curToken, this.curToken.literal);
+    }
+
+    let expression: Expression | null = null;
+    if (this.peekToken.type === TokenType.EQUALS) {
+      this.nextToken();
+      this.nextToken();
+      expression = this.parseExpression();
+    }
+
+    if (this.peekToken.type === TokenType.SEMICOLON) {
+      this.nextToken();
+    } else {
+      return null;
+    }
+    return new ConstStatement(token, name, typeAnnotation, expression);
   }
 
   private parseExpression(): Expression | null {

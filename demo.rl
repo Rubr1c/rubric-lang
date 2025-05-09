@@ -1,2 +1,2 @@
-var x: float = 20.3;
+const x: float = 20.3;
 
