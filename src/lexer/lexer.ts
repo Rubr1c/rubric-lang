@@ -295,6 +295,8 @@ export class Lexer {
         return TokenType.VAR;
       case 'const':
         return TokenType.CONST;
+      case 'fn':
+        return TokenType.FUNCTION;
       case 'string':
         return TokenType.TYPE_STRING;
       case 'bool':
