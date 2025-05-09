@@ -18,6 +18,7 @@ import {
   PostfixExpression,
   CallExpression,
   TernaryExpression,
+  ReturnStatement,
   FunctionDeclaration,
   Param,
   BlockStatement,
@@ -64,6 +65,7 @@ export class Parser {
   private curToken: Token;
   private peekToken: Token;
   public errors: string[] = [];
+  private inFunction: boolean = false;
   private prefixParseFns: Partial<Record<TokenType, () => Expression | null>> =
     {};
   private infixParseFns: Partial<
@@ -320,6 +322,8 @@ export class Parser {
         return this.parseConstStatement();
       case TokenType.FUNCTION:
         return this.parseFunctionDecleration();
+      case TokenType.RETURN_STATEMENT:
+        return this.parseReturnStatement();
       default:
         return this.parseExpressionStatement();
     }
@@ -369,7 +373,10 @@ export class Parser {
     if (!this.expectPeek(TokenType.LCURLY)) {
       return null;
     }
+    const wasInFunction = this.inFunction;
+    this.inFunction = true;
     const body = this.parseBlockStatement();
+    this.inFunction = wasInFunction;
     return new FunctionDeclaration(token, name, params, body, returnType);
   }
 
@@ -464,5 +471,24 @@ export class Parser {
       return null;
     }
     return stmt;
+  }
+
+  private parseReturnStatement(): Statement | null {
+    if (!this.inFunction) {
+      this.errors.push(
+        `Return statement not allowed outside of function at line ${this.curToken.line}`
+      );
+      return null;
+    }
+    const token = this.curToken;
+    this.nextToken();
+    let returnValue: Expression | null = null;
+    if (!this.curTokenIs(TokenType.SEMICOLON)) {
+      returnValue = this.parseExpression(Precedence.LOWEST);
+    }
+    if (!this.expectPeek(TokenType.SEMICOLON)) {
+      return null;
+    }
+    return new ReturnStatement(token, returnValue);
   }
 }
