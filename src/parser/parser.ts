@@ -13,6 +13,11 @@ import {
   BooleanLiteral,
   ConstStatement,
   ExpressionStatement,
+  PrefixExpression,
+  InfixExpression,
+  PostfixExpression,
+  CallExpression,
+  TernaryExpression,
 } from '../ast';
 
 export enum Precedence {
@@ -167,33 +172,59 @@ export class Parser {
   }
 
   private parsePrefixExpression(): Expression | null {
-    // TODO: implement prefix parsing
-    return null;
+    const token = this.curToken;
+    const operator = token.literal;
+    this.nextToken();
+    const right = this.parseExpression(Precedence.PREFIX)!;
+    return new PrefixExpression(token, operator, right);
   }
 
   private parseInfixExpression(left: Expression): Expression | null {
-    // TODO: implement infix parsing
-    return null;
+    const token = this.curToken;
+    const operator = token.literal;
+    const prec = this.currentPrecedence();
+    this.nextToken();
+    const right = this.parseExpression(prec)!;
+    return new InfixExpression(token, left, operator, right);
   }
 
   private parsePostfixExpression(left: Expression): Expression | null {
-    // TODO: implement postfix parsing
-    return null;
+    const token = this.curToken;
+    const operator = token.literal;
+    return new PostfixExpression(token, left, operator);
   }
 
   private parseCallExpression(fn: Expression): Expression | null {
-    // TODO: implement call expression parsing
-    return null;
+    const token = this.curToken;
+    const args: Expression[] = [];
+    if (this.peekToken.type !== TokenType.RPAREN) {
+      this.nextToken();
+      args.push(this.parseExpression(Precedence.LOWEST)!);
+      while (this.peekTokenIs(TokenType.COMMA)) {
+        this.nextToken();
+        this.nextToken();
+        args.push(this.parseExpression(Precedence.LOWEST)!);
+      }
+    }
+    this.expectPeek(TokenType.RPAREN);
+    return new CallExpression(token, fn, args);
   }
 
-  private parseTernaryExpression(left: Expression): Expression | null {
-    // TODO: implement ternary parsing
-    return null;
+  private parseTernaryExpression(condition: Expression): Expression {
+    const token = this.curToken;
+    this.nextToken();
+    const consequent = this.parseExpression(Precedence.TERNARY)!;
+    this.expectPeek(TokenType.COLON);
+    this.nextToken();
+    const alternate = this.parseExpression(Precedence.TERNARY)!;
+    return new TernaryExpression(token, condition, consequent, alternate);
   }
 
   private parseGroupedExpression(): Expression | null {
-    // TODO: implement grouped ( ) parsing
-    return null;
+    this.nextToken();
+    const exp = this.parseExpression(Precedence.LOWEST)!;
+    this.expectPeek(TokenType.RPAREN);
+    return exp;
   }
 
   private nextToken(): void {
@@ -267,7 +298,7 @@ export class Parser {
     if (this.peekToken.type === TokenType.EQUALS) {
       this.nextToken();
       this.nextToken();
-      expression = this.parseExpression();
+      expression = this.parseExpression(Precedence.LOWEST);
     }
 
     if (this.peekToken.type === TokenType.SEMICOLON) {
@@ -295,7 +326,7 @@ export class Parser {
     if (this.peekToken.type === TokenType.EQUALS) {
       this.nextToken();
       this.nextToken();
-      expression = this.parseExpression();
+      expression = this.parseExpression(Precedence.LOWEST);
     }
 
     if (this.peekToken.type === TokenType.SEMICOLON) {
@@ -306,29 +337,33 @@ export class Parser {
     return new ConstStatement(token, name, typeAnnotation, expression);
   }
 
-  private parseExpression(): Expression | null {
-    switch (this.curToken.type) {
-      case TokenType.IDENTIFIER:
-        return new Identifier(this.curToken, this.curToken.literal);
-      case TokenType.INT:
-        return new IntegerLiteral(
-          this.curToken,
-          parseInt(this.curToken.literal, 10)
-        );
-      case TokenType.FLOAT:
-        return new FloatLiteral(
-          this.curToken,
-          parseFloat(this.curToken.literal)
-        );
-      case TokenType.STRING:
-        return new StringLiteral(this.curToken, this.curToken.literal);
-      case TokenType.BOOLEAN:
-        return new BooleanLiteral(
-          this.curToken,
-          this.curToken.literal === 'true'
-        );
-      default:
-        return null;
+  private parseExpression(precedence: Precedence): Expression | null {
+    const prefix = this.prefixParseFns[this.curToken.type];
+    if (!prefix) {
+      return null;
     }
+    let leftExp = prefix.call(this);
+
+    while (
+      !this.peekTokenIs(TokenType.SEMICOLON) &&
+      precedence < this.peekPrecedence()
+    ) {
+      const infix = this.infixParseFns[this.peekToken.type];
+      if (!infix) break;
+      this.nextToken();
+      leftExp = infix.call(this, leftExp!);
+    }
+    return leftExp;
+  }
+
+  private parseExpressionStatement(): ExpressionStatement {
+    const stmt = new ExpressionStatement(
+      this.curToken,
+      this.parseExpression(Precedence.LOWEST)!
+    );
+    if (this.peekTokenIs(TokenType.SEMICOLON)) {
+      this.nextToken();
+    }
+    return stmt;
   }
 }

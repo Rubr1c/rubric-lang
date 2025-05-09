@@ -116,7 +116,7 @@ export class PostfixExpression implements Expression {
   public operator: string;
   public left: Expression;
 
-  constructor(token: Token, operator: string, left: Expression) {
+  constructor(token: Token, left: Expression, operator: string) {
     this.token = token;
     this.operator = operator;
     this.left = left;

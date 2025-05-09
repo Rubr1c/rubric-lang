@@ -1,2 +1,2 @@
-const x: float = 20.3;
+const x: bool = x ? y : z;
 
