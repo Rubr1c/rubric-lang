@@ -277,7 +277,7 @@ export class Parser {
       case TokenType.CONST:
         return this.parseConstStatement();
       default:
-        return null;
+        return this.parseExpressionStatement();
     }
   }
 
