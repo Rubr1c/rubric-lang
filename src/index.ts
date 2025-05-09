@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Lexer } from './lexer/lexer';
-import { TokenType, Token } from './lexer/tokens';
+import { Parser } from './parser/parser';
 
 console.log('Rubric Lang Interpreter - Demo Run');
 
@@ -30,18 +30,10 @@ const main = () => {
     console.log('-------------------\n');
 
     const lexer = new Lexer(sourceCode);
-
-    console.log('--- Tokens ---');
-    let token: Token;
-    do {
-      token = lexer.nextToken();
-      console.log(
-        `Type: ${token.type.padEnd(15)}, Literal: "${token.literal
-          .replace(/\n/g, '\\n')
-          .replace(/\r/g, '\\r')}", Line: ${token.line}, Col: ${token.column}`
-      );
-    } while (token.type !== TokenType.EOF);
-    console.log('--------------\n');
+    const parser = new Parser(lexer);
+    const program = parser.parseProgram();
+    console.log('--- AST ---');
+    console.dir(program, { depth: null });
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.error(`Error: File not found at ${resolvedFilePath}`);
