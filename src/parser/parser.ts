@@ -18,6 +18,9 @@ import {
   PostfixExpression,
   CallExpression,
   TernaryExpression,
+  FunctionDeclaration,
+  Param,
+  BlockStatement,
 } from '../ast';
 
 export enum Precedence {
@@ -258,6 +261,45 @@ export class Parser {
     return p !== undefined ? p : Precedence.LOWEST;
   }
 
+  private parseTypeAnnotation(): TypeNode | null {
+    if (!this.expectPeek(TokenType.COLON)) {
+      return null;
+    }
+    const nextType = this.peekToken.type;
+    const validTypes = [
+      TokenType.TYPE_STRING,
+      TokenType.TYPE_BOOLEAN,
+      TokenType.TYPE_INT,
+      TokenType.TYPE_FLOAT,
+    ];
+    if (!validTypes.includes(nextType)) {
+      this.errors.push(`Invalid type annotation: ${this.peekToken.literal}`);
+      return null;
+    }
+    this.nextToken();
+    return new TypeNode(this.curToken, this.curToken.literal);
+  }
+
+  private curTokenIs(type: TokenType): boolean {
+    return this.curToken.type === type;
+  }
+
+  private parseBlockStatement(): BlockStatement {
+    const block = new BlockStatement(this.curToken, []);
+    this.nextToken();
+    while (
+      !this.curTokenIs(TokenType.RCURLY) &&
+      this.curToken.type !== TokenType.EOF
+    ) {
+      const stmt = this.parseStatement();
+      if (stmt) {
+        block.statements.push(stmt);
+      }
+      this.nextToken();
+    }
+    return block;
+  }
+
   public parseProgram(): Program {
     const program = new Program();
     while (this.curToken.type !== TokenType.EOF) {
@@ -276,9 +318,59 @@ export class Parser {
         return this.parseVarStatement();
       case TokenType.CONST:
         return this.parseConstStatement();
+      case TokenType.FUNCTION:
+        return this.parseFunctionDecleration();
       default:
         return this.parseExpressionStatement();
     }
+  }
+
+  private parseFunctionDecleration(): Statement | null {
+    const token = this.curToken;
+    if (!this.expectPeek(TokenType.IDENTIFIER)) {
+      return null;
+    }
+    const name = new Identifier(this.curToken, this.curToken.literal);
+    if (!this.expectPeek(TokenType.LPAREN)) {
+      return null;
+    }
+    const params: Param[] = [];
+    if (this.peekToken.type !== TokenType.RPAREN) {
+      this.nextToken();
+      do {
+        if (this.curToken.type !== TokenType.IDENTIFIER) {
+          return null;
+        }
+        const paramNameToken = this.curToken;
+        const paramNameValue = this.curToken.literal;
+        const paramTypeNode = this.parseTypeAnnotation();
+        if (!paramTypeNode) {
+          return null;
+        }
+        const param = new Param(paramNameToken, paramNameValue, paramTypeNode);
+        params.push(param);
+        if (this.peekToken.type === TokenType.COMMA) {
+          this.nextToken();
+          this.nextToken();
+        } else {
+          break;
+        }
+      } while (true);
+    }
+    if (!this.expectPeek(TokenType.RPAREN)) {
+      return null;
+    }
+
+    const returnType = this.parseTypeAnnotation();
+    if (!returnType) {
+      return null;
+    }
+
+    if (!this.expectPeek(TokenType.LCURLY)) {
+      return null;
+    }
+    const body = this.parseBlockStatement();
+    return new FunctionDeclaration(token, name, params, body, returnType);
   }
 
   private parseVarStatement(): Statement | null {
@@ -286,12 +378,16 @@ export class Parser {
     if (!this.expectPeek(TokenType.IDENTIFIER)) {
       return null;
     }
+
     const name = new Identifier(this.curToken, this.curToken.literal);
+
+    // Optional type annotation
     let typeAnnotation: TypeNode | null = null;
     if (this.peekToken.type === TokenType.COLON) {
-      this.nextToken();
-      this.nextToken();
-      typeAnnotation = new TypeNode(this.curToken, this.curToken.literal);
+      typeAnnotation = this.parseTypeAnnotation();
+      if (!typeAnnotation) {
+        return null;
+      }
     }
 
     let expression: Expression | null = null;
@@ -315,11 +411,13 @@ export class Parser {
       return null;
     }
     const name = new Identifier(this.curToken, this.curToken.literal);
+
     let typeAnnotation: TypeNode | null = null;
     if (this.peekToken.type === TokenType.COLON) {
-      this.nextToken();
-      this.nextToken();
-      typeAnnotation = new TypeNode(this.curToken, this.curToken.literal);
+      typeAnnotation = this.parseTypeAnnotation();
+      if (!typeAnnotation) {
+        return null;
+      }
     }
 
     let expression: Expression | null = null;
@@ -356,13 +454,14 @@ export class Parser {
     return leftExp;
   }
 
-  private parseExpressionStatement(): ExpressionStatement {
+  private parseExpressionStatement(): Statement | null {
     const stmt = new ExpressionStatement(
       this.curToken,
       this.parseExpression(Precedence.LOWEST)!
     );
-    if (this.peekTokenIs(TokenType.SEMICOLON)) {
-      this.nextToken();
+
+    if (!this.expectPeek(TokenType.SEMICOLON)) {
+      return null;
     }
     return stmt;
   }

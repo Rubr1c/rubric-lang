@@ -1,2 +1,4 @@
-const x: bool = x ? y : z;
+fn test(x: int, y: int): int {
+    var z = x + y;
+}
 

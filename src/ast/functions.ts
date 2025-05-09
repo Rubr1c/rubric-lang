@@ -1,5 +1,5 @@
 import { Token } from '../lexer/tokens';
-import { Expression, Node, Statement } from './base';
+import { Expression, Statement } from './base';
 import { BlockStatement } from './statements';
 import { Identifier } from './expressions';
 import { TypeNode } from './types';
@@ -68,7 +68,7 @@ export class FunctionDeclaration implements Statement {
   constructor(
     token: Token,
     name: Identifier,
-    params: Identifier[] = [],
+    params: Param[] = [],
     body: BlockStatement,
     returnType?: TypeNode
   ) {
@@ -87,5 +87,14 @@ export class FunctionDeclaration implements Statement {
     const paramsStr = this.params.map((p) => p.toString()).join(', ');
     const returnStr = this.returnType ? `: ${this.returnType}` : '';
     return `${this.tokenLiteral()} ${this.name.toString()}(${paramsStr})${returnStr} ${this.body.toString()}`;
+  }
+}
+
+export class Param extends Identifier {
+  public type: TypeNode;
+
+  constructor(token: Token, value: string, type: TypeNode) {
+    super(token, value);
+    this.type = type;
   }
 }
