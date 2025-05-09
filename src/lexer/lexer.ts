@@ -313,6 +313,8 @@ export class Lexer {
         return TokenType.FOR_STATEMENT;
       case 'while':
         return TokenType.WHILE_STATEMENT;
+      case 'do':
+        return TokenType.DO_STATEMENT;
       case 'return':
         return TokenType.RETURN_STATEMENT;
       case 'true':
