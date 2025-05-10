@@ -27,6 +27,7 @@ import {
   ForStatement,
   WhileStatement,
   DoWhileStatement,
+  FunctionLiteral,
 } from '../ast';
 
 export enum Precedence {
@@ -105,6 +106,10 @@ export class Parser {
     this.registerPrefix(
       TokenType.LPAREN,
       this.parseGroupedExpression.bind(this)
+    );
+    this.registerPrefix(
+      TokenType.FUNCTION,
+      this.parseFunctionLiteralExpression.bind(this)
     );
     // Register infix parse functions
     this.registerInfix(TokenType.PLUS, this.parseInfixExpression.bind(this));
@@ -304,6 +309,7 @@ export class Parser {
       TokenType.TYPE_BOOLEAN,
       TokenType.TYPE_INT,
       TokenType.TYPE_FLOAT,
+      TokenType.TYPE_VOID,
     ];
 
     if (
@@ -582,6 +588,19 @@ export class Parser {
       fnReturnType = parsedReturnType;
     }
 
+    let actualReturnTypeNode: TypeNode;
+    if (fnReturnType) {
+      actualReturnTypeNode = fnReturnType;
+    } else {
+      const voidToken: Token = {
+        type: TokenType.TYPE_VOID,
+        literal: 'void',
+        line: token.line,
+        column: token.column,
+      };
+      actualReturnTypeNode = new TypeNode(voidToken, 'void');
+    }
+
     if (!this.expectPeek(TokenType.LCURLY)) {
       this.errors.push(
         `Expected '{' before function body for function '${name.value}' at line ${this.curToken.line}`
@@ -592,7 +611,13 @@ export class Parser {
     this.inFunction = true;
     const body = this.parseBlockStatement();
     this.inFunction = wasInFunction;
-    return new FunctionDeclaration(token, name, params, body, fnReturnType);
+    return new FunctionDeclaration(
+      token,
+      name,
+      params,
+      body,
+      actualReturnTypeNode
+    );
   }
 
   private parseVarStatement(): Statement | null {
@@ -770,5 +795,89 @@ export class Parser {
       assignToken.literal,
       right
     );
+  }
+
+  private parseFunctionLiteralExpression(): Expression | null {
+    const funcToken = this.curToken; // Current token is FUNCTION
+
+    if (!this.expectPeek(TokenType.LPAREN)) {
+      this.errors.push(
+        `Expected '(' after function keyword in function literal at line ${funcToken.line}`
+      );
+      return null;
+    }
+
+    // Parse parameters
+    const params: Param[] = [];
+    if (this.peekToken.type !== TokenType.RPAREN) {
+      this.nextToken();
+      do {
+        if (this.curToken.type !== TokenType.IDENTIFIER) {
+          this.errors.push(
+            `Expected parameter name (identifier) in function literal at line ${this.curToken.line}`
+          );
+          return null;
+        }
+        const paramNameToken = this.curToken;
+        const paramNameValue = this.curToken.literal;
+
+        const paramTypeNode = this.parseTypeAnnotation();
+        if (!paramTypeNode) {
+          return null;
+        }
+        params.push(new Param(paramNameToken, paramNameValue, paramTypeNode));
+
+        if (this.peekTokenIs(TokenType.COMMA)) {
+          this.nextToken();
+          this.nextToken();
+        } else {
+          break;
+        }
+      } while (true);
+    }
+
+    if (!this.expectPeek(TokenType.RPAREN)) {
+      this.errors.push(
+        `Expected ')' or ',' after parameter in function literal at line ${this.curToken.line}`
+      );
+      return null;
+    }
+
+    let fnReturnType: TypeNode | undefined = undefined;
+    if (this.peekTokenIs(TokenType.COLON)) {
+      const parsedReturnType = this.parseTypeAnnotation();
+      if (!parsedReturnType) {
+        return null;
+      }
+      fnReturnType = parsedReturnType;
+    }
+
+    let actualReturnTypeNode: TypeNode;
+    if (fnReturnType) {
+      actualReturnTypeNode = fnReturnType;
+    } else {
+      // Default to void if no return type is specified
+      const voidToken: Token = {
+        type: TokenType.TYPE_VOID,
+        literal: 'void',
+        line: funcToken.line, // Use line/col from the 'function' keyword token
+        column: funcToken.column,
+      };
+      actualReturnTypeNode = new TypeNode(voidToken, 'void');
+    }
+
+    if (!this.expectPeek(TokenType.LCURLY)) {
+      this.errors.push(
+        `Expected '{' before function literal body at line ${this.curToken.line}`
+      );
+      return null;
+    }
+
+    const wasInFunction = this.inFunction;
+    this.inFunction = true;
+    const body = this.parseBlockStatement();
+    this.inFunction = wasInFunction;
+
+    return new FunctionLiteral(funcToken, params, body, actualReturnTypeNode);
   }
 }

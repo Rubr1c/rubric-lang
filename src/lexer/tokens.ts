@@ -8,6 +8,7 @@ export enum TokenType {
   FLOAT = 'FLOAT',
   STRING = 'STRING',
   BOOLEAN = 'BOOLEAN',
+  VOID = 'VOID',
 
   EQUALS = 'EQUALS',
   COLON = 'COLON',
@@ -54,6 +55,7 @@ export enum TokenType {
   TYPE_INT = 'TYPE_INT',
   TYPE_FLOAT = 'TYPE_FLOAT',
   TYPE_BOOLEAN = 'TYPE_BOOLEAN',
+  TYPE_VOID = 'TYPE_VOID',
 
   ILLEGAL = 'ILLEGAL',
   EOF = 'EOF',

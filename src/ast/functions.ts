@@ -6,7 +6,6 @@ import { TypeNode } from './types';
 
 export class FunctionLiteral implements Expression {
   public token: Token;
-  public name?: Identifier;
   public params: Identifier[];
   public returnType?: TypeNode;
   public body: BlockStatement;
@@ -15,11 +14,9 @@ export class FunctionLiteral implements Expression {
     token: Token,
     params: Identifier[] = [],
     body: BlockStatement,
-    name?: Identifier,
-    returnType?: TypeNode
+    returnType: TypeNode
   ) {
     this.token = token;
-    this.name = name;
     this.params = params;
     this.returnType = returnType;
     this.body = body;
@@ -31,9 +28,8 @@ export class FunctionLiteral implements Expression {
 
   toString(): string {
     const paramsStr = this.params.map((p) => p.toString()).join(', ');
-    const nameStr = this.name ? this.name.toString() : '';
     const returnStr = this.returnType ? `: ${this.returnType}` : '';
-    return `${nameStr}${this.tokenLiteral()}(${paramsStr})${returnStr} ${this.body.toString()}`;
+    return `${this.tokenLiteral()}(${paramsStr})${returnStr} ${this.body.toString()}`;
   }
 }
 

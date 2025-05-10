@@ -199,7 +199,6 @@ describe('AST Nodes', () => {
       fnTok,
       [callee],
       body,
-      undefined,
       returnType
     );
     expect(fnLit.tokenLiteral()).toBe('fn');

@@ -1,5 +1,2 @@
 
-
-do {
-    x++;
-} while (x > 2);
+var x = fn(): void {};
