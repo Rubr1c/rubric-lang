@@ -621,29 +621,88 @@ export class Parser {
   }
 
   private parseVarStatement(): Statement | null {
-    const token = this.curToken;
+    const varToken = this.curToken;
     if (!this.expectPeek(TokenType.IDENTIFIER)) {
       this.errors.push(
         `Expected variable name (identifier) after 'var' keyword at line ${this.curToken.line}`
       );
       return null;
     }
-
     const name = new Identifier(this.curToken, this.curToken.literal);
 
-    let typeAnnotation: TypeNode | null = null;
-    if (this.peekToken.type === TokenType.COLON) {
-      typeAnnotation = this.parseTypeAnnotation();
-      if (!typeAnnotation) {
+    let explicitTypeAnnotation: TypeNode | null = null;
+    if (this.peekTokenIs(TokenType.COLON)) {
+      explicitTypeAnnotation = this.parseTypeAnnotation();
+      if (!explicitTypeAnnotation) {
         return null;
       }
     }
 
     let expression: Expression | null = null;
-    if (this.peekToken.type === TokenType.EQUALS) {
+    if (this.peekTokenIs(TokenType.EQUALS)) {
       this.nextToken();
       this.nextToken();
       expression = this.parseExpression(Precedence.LOWEST);
+      if (!expression) {
+        this.errors.push(
+          `Expected expression after '=' in var declaration for '${name.value}' at line ${this.curToken.line}`
+        );
+        return null;
+      }
+    }
+
+    let finalTypeAnnotationNode: TypeNode | null = null;
+
+    if (expression) {
+      if (explicitTypeAnnotation) {
+        const inferredTypeInfo = this.inferBasicTypeFromExpression(expression);
+        if (
+          inferredTypeInfo &&
+          inferredTypeInfo.typeName !== explicitTypeAnnotation.value
+        ) {
+          this.errors.push(
+            `Type mismatch for variable '${name.value}' at line ${name.token.line}. ` +
+              `Explicitly typed as '${explicitTypeAnnotation.value}' but initializer is of inferred type '${inferredTypeInfo.typeName}'.`
+          );
+          return null;
+        }
+        finalTypeAnnotationNode = explicitTypeAnnotation;
+      } else {
+        const inferredTypeInfo = this.inferBasicTypeFromExpression(expression);
+        if (inferredTypeInfo) {
+          const syntheticToken: Token = {
+            type: inferredTypeInfo.tokenType,
+            literal: inferredTypeInfo.typeName,
+            line: inferredTypeInfo.originalToken.line,
+            column: inferredTypeInfo.originalToken.column,
+          };
+          finalTypeAnnotationNode = new TypeNode(
+            syntheticToken,
+            inferredTypeInfo.typeName
+          );
+        } else {
+          this.errors.push(
+            `Cannot infer type for initialized variable '${name.value}' at line ${name.token.line}. Please provide an explicit type annotation.`
+          );
+          return null;
+        }
+      }
+    } else {
+      if (explicitTypeAnnotation) {
+        finalTypeAnnotationNode = explicitTypeAnnotation;
+      } else {
+        this.errors.push(
+          `Variable '${name.value}' at line ${name.token.line} must have a type annotation or an initializer.`
+        );
+        return null;
+      }
+    }
+
+    if (!finalTypeAnnotationNode) {
+      this.errors.push(
+        `Failed to determine type for variable '${name.value}' at line ${name.token.line}.`
+      );
+      return null;
     }
 
     if (!this.expectPeek(TokenType.SEMICOLON)) {
@@ -652,11 +711,17 @@ export class Parser {
       );
       return null;
     }
-    return new VarStatement(token, name, typeAnnotation, expression);
+
+    return new VarStatement(
+      varToken,
+      name,
+      finalTypeAnnotationNode,
+      expression
+    );
   }
 
   private parseConstStatement(): Statement | null {
-    const token = this.curToken;
+    const constToken = this.curToken;
     if (!this.expectPeek(TokenType.IDENTIFIER)) {
       this.errors.push(
         `Expected constant name (identifier) after 'const' keyword at line ${this.curToken.line}`
@@ -665,17 +730,17 @@ export class Parser {
     }
     const name = new Identifier(this.curToken, this.curToken.literal);
 
-    let typeAnnotation: TypeNode | null = null;
-    if (this.peekToken.type === TokenType.COLON) {
-      typeAnnotation = this.parseTypeAnnotation();
-      if (!typeAnnotation) {
+    let explicitTypeAnnotation: TypeNode | null = null;
+    if (this.peekTokenIs(TokenType.COLON)) {
+      explicitTypeAnnotation = this.parseTypeAnnotation();
+      if (!explicitTypeAnnotation) {
         return null;
       }
     }
 
     if (!this.expectPeek(TokenType.EQUALS)) {
       this.errors.push(
-        `Expected '=' after const identifier '${name.value}' at line ${this.curToken.line}`
+        `Expected '=' after const identifier '${name.value}' at line ${this.curToken.line}. Constants must be initialized.`
       );
       return null;
     }
@@ -689,6 +754,49 @@ export class Parser {
       return null;
     }
 
+    let finalTypeAnnotationNode: TypeNode | null = null;
+
+    if (explicitTypeAnnotation) {
+      const inferredTypeInfo = this.inferBasicTypeFromExpression(expression);
+      if (
+        inferredTypeInfo &&
+        inferredTypeInfo.typeName !== explicitTypeAnnotation.value
+      ) {
+        this.errors.push(
+          `Type mismatch for constant '${name.value}' at line ${name.token.line}. ` +
+            `Explicitly typed as '${explicitTypeAnnotation.value}' but initializer is of inferred type '${inferredTypeInfo.typeName}'.`
+        );
+        return null;
+      }
+      finalTypeAnnotationNode = explicitTypeAnnotation;
+    } else {
+      const inferredTypeInfo = this.inferBasicTypeFromExpression(expression);
+      if (inferredTypeInfo) {
+        const syntheticToken: Token = {
+          type: inferredTypeInfo.tokenType,
+          literal: inferredTypeInfo.typeName,
+          line: inferredTypeInfo.originalToken.line,
+          column: inferredTypeInfo.originalToken.column,
+        };
+        finalTypeAnnotationNode = new TypeNode(
+          syntheticToken,
+          inferredTypeInfo.typeName
+        );
+      } else {
+        this.errors.push(
+          `Cannot infer type for constant '${name.value}' at line ${name.token.line}. Please provide an explicit type annotation.`
+        );
+        return null;
+      }
+    }
+
+    if (!finalTypeAnnotationNode) {
+      this.errors.push(
+        `Failed to determine type for constant '${name.value}' at line ${name.token.line}.`
+      );
+      return null;
+    }
+
     if (!this.expectPeek(TokenType.SEMICOLON)) {
       this.errors.push(
         `Expected ';' after const declaration for '${name.value}' at line ${this.peekToken.line}`
@@ -696,7 +804,12 @@ export class Parser {
       return null;
     }
 
-    return new ConstStatement(token, name, typeAnnotation, expression);
+    return new ConstStatement(
+      constToken,
+      name,
+      finalTypeAnnotationNode,
+      expression
+    );
   }
 
   private parseExpression(precedence: Precedence): Expression | null {
@@ -795,6 +908,38 @@ export class Parser {
       assignToken.literal,
       right
     );
+  }
+
+  private inferBasicTypeFromExpression(
+    expression: Expression
+  ): { typeName: string; tokenType: TokenType; originalToken: Token } | null {
+    if (expression instanceof IntegerLiteral) {
+      return {
+        typeName: 'int',
+        tokenType: TokenType.TYPE_INT,
+        originalToken: expression.token,
+      };
+    } else if (expression instanceof FloatLiteral) {
+      return {
+        typeName: 'float',
+        tokenType: TokenType.TYPE_FLOAT,
+        originalToken: expression.token,
+      };
+    } else if (expression instanceof StringLiteral) {
+      return {
+        typeName: 'string',
+        tokenType: TokenType.TYPE_STRING,
+        originalToken: expression.token,
+      };
+    } else if (expression instanceof BooleanLiteral) {
+      return {
+        typeName: 'boolean',
+        tokenType: TokenType.TYPE_BOOLEAN,
+        originalToken: expression.token,
+      };
+    }
+    // TODO: Could potentially infer for ArrayLiterals, ObjectLiterals, or even FunctionLiterals if a 'function' type exists
+    return null; // Cannot infer a simple type
   }
 
   private parseFunctionLiteralExpression(): Expression | null {

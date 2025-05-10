@@ -1,2 +1,5 @@
 
-var x = fn(): void {};
+const x = 0.0;
+
+
+
