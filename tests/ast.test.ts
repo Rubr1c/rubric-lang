@@ -10,6 +10,7 @@ import {
   PostfixExpression,
   InfixExpression,
   TernaryExpression,
+  AssignmentExpression,
   CallExpression,
 } from '../src/ast/expressions';
 import {
@@ -96,6 +97,21 @@ describe('AST Nodes', () => {
       a
     );
     expect(ternary.toString()).toBe('(a ? 5 : a)');
+  });
+
+  it('AssignmentExpression should format correctly', () => {
+    const assignTok: Token = { type: TokenType.EQUALS, literal: '=' };
+    const name = new Identifier(
+      { type: TokenType.IDENTIFIER, literal: 'x' },
+      'x'
+    );
+    const value = new IntegerLiteral(
+      { type: TokenType.INT, literal: '42' },
+      42
+    );
+    const assignment = new AssignmentExpression(assignTok, name, '=', value);
+    expect(assignment.tokenLiteral()).toBe('=');
+    expect(assignment.toString()).toBe('(x = 42)');
   });
 
   it('VarStatement and ConstStatement should format declarations', () => {

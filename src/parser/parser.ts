@@ -225,14 +225,32 @@ export class Parser {
     return new CallExpression(token, fn, args);
   }
 
-  private parseTernaryExpression(condition: Expression): Expression {
-    const token = this.curToken;
+  private parseTernaryExpression(left: Expression): Expression | null {
+    const operatorToken = this.curToken;
+
     this.nextToken();
-    const consequent = this.parseExpression(Precedence.TERNARY)!;
-    this.expectPeek(TokenType.COLON);
+    const consequence = this.parseExpression(Precedence.LOWEST);
+    if (!consequence) {
+      this.errors.push(
+        `Expected consequence for ternary operator at line ${operatorToken.line}`
+      );
+      return null;
+    }
+
+    if (!this.expectPeek(TokenType.COLON)) {
+      return null;
+    }
+
     this.nextToken();
-    const alternate = this.parseExpression(Precedence.TERNARY)!;
-    return new TernaryExpression(token, condition, consequent, alternate);
+    const alternative = this.parseExpression(Precedence.LOWEST);
+    if (!alternative) {
+      this.errors.push(
+        `Expected alternative for ternary operator at line ${this.curToken.line}`
+      );
+      return null;
+    }
+
+    return new TernaryExpression(operatorToken, left, consequence, alternative);
   }
 
   private parseGroupedExpression(): Expression | null {
@@ -277,19 +295,26 @@ export class Parser {
     if (!this.expectPeek(TokenType.COLON)) {
       return null;
     }
-    const nextType = this.peekToken.type;
-    const validTypes = [
+    const nextTypeToken = this.peekToken;
+    const specificValidTypes = [
       TokenType.TYPE_STRING,
       TokenType.TYPE_BOOLEAN,
       TokenType.TYPE_INT,
       TokenType.TYPE_FLOAT,
     ];
-    if (!validTypes.includes(nextType)) {
+
+    if (
+      !specificValidTypes.includes(nextTypeToken.type) &&
+      nextTypeToken.type !== TokenType.IDENTIFIER
+    ) {
       this.errors.push(
-        `Invalid type annotation: ${this.peekToken.literal} at line ${this.peekToken.line}`
+        `Invalid token for type annotation: '${nextTypeToken.literal}' (${nextTypeToken.type}) at line ${nextTypeToken.line}. Expected a built-in type (string, boolean, int, float) or an identifier for the type name.`
       );
+      this.nextToken();
+      this.nextToken();
       return null;
     }
+
     this.nextToken();
     return new TypeNode(this.curToken, this.curToken.literal);
   }
@@ -436,9 +461,14 @@ export class Parser {
       return null;
     }
 
-    const returnType = this.parseTypeAnnotation();
-    if (!returnType) {
-      return null;
+    let fnReturnType: TypeNode | undefined = undefined;
+
+    if (this.peekTokenIs(TokenType.COLON)) {
+      const parsedReturnType = this.parseTypeAnnotation();
+      if (!parsedReturnType) {
+        return null;
+      }
+      fnReturnType = parsedReturnType;
     }
 
     if (!this.expectPeek(TokenType.LCURLY)) {
@@ -451,7 +481,7 @@ export class Parser {
     this.inFunction = true;
     const body = this.parseBlockStatement();
     this.inFunction = wasInFunction;
-    return new FunctionDeclaration(token, name, params, body, returnType);
+    return new FunctionDeclaration(token, name, params, body, fnReturnType);
   }
 
   private parseVarStatement(): Statement | null {
@@ -559,11 +589,12 @@ export class Parser {
   }
 
   private parseExpressionStatement(): Statement | null {
+    const statementToken = this.curToken;
     const expression = this.parseExpression(Precedence.LOWEST);
     if (!expression) {
       return null;
     }
-    const stmt = new ExpressionStatement(this.curToken, expression);
+    const stmt = new ExpressionStatement(statementToken, expression);
 
     if (!this.expectPeek(TokenType.SEMICOLON)) {
       return null;
@@ -578,11 +609,15 @@ export class Parser {
       );
       return null;
     }
-    const token = this.curToken;
-    this.nextToken();
+    const returnToken = this.curToken;
+    this.nextToken(); // Consume RETURN token
+
     let returnValue: Expression | null = null;
+
     if (!this.curTokenIs(TokenType.SEMICOLON)) {
+      // If there's something after 'return' (not just 'return;')
       returnValue = this.parseExpression(Precedence.LOWEST);
+      // If parsing an expression failed AND we are not already at a semicolon that might terminate a bad expression
       if (!returnValue && !this.curTokenIs(TokenType.SEMICOLON)) {
         this.errors.push(
           `Expected expression or ';' after 'return' keyword at line ${this.curToken.line}`
@@ -590,10 +625,14 @@ export class Parser {
         return null;
       }
     }
-    if (!this.expectPeek(TokenType.SEMICOLON)) {
-      return null;
+
+    if (this.curTokenIs(TokenType.SEMICOLON)) {
+    } else {
+      if (!this.expectPeek(TokenType.SEMICOLON)) {
+        return null;
+      }
     }
-    return new ReturnStatement(token, returnValue);
+    return new ReturnStatement(returnToken, returnValue);
   }
 
   private parseAssignmentExpression(left: Expression): Expression | null {
