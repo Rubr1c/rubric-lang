@@ -26,6 +26,7 @@ import {
   IfStatement,
   ForStatement,
   WhileStatement,
+  DoWhileStatement,
 } from '../ast';
 
 export enum Precedence {
@@ -369,9 +370,44 @@ export class Parser {
         return this.parseForStatement();
       case TokenType.WHILE_STATEMENT:
         return this.parseWhileStatement();
+      case TokenType.DO_STATEMENT:
+        return this.parseDoWhileStatement();
       default:
         return this.parseExpressionStatement();
     }
+  }
+
+  private parseDoWhileStatement(): Statement | null {
+    const token = this.curToken;
+
+    if (!this.expectPeek(TokenType.LCURLY)) {
+      return null;
+    }
+
+    const body = this.parseBlockStatement();
+
+    if (!this.expectPeek(TokenType.WHILE_STATEMENT)) {
+      return null;
+    }
+
+    if (!this.expectPeek(TokenType.LPAREN)) {
+      return null;
+    }
+
+    const condition = this.parseExpression(Precedence.LOWEST);
+    if (!condition) {
+      this.errors.push(
+        `Expected condition expression for do while statement at line ${this.curToken.line}`
+      );
+      return null;
+    }
+
+
+    if (!this.expectPeek(TokenType.SEMICOLON)) {
+      return null;
+    }
+
+    return new DoWhileStatement(token, body, condition);
   }
 
   private parseWhileStatement(): Statement | null {

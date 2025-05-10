@@ -1,4 +1,5 @@
 
-while (x > 2) {
+
+do {
     x++;
-}
+} while (x > 2);
