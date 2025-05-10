@@ -16,6 +16,7 @@ import {
   PrefixExpression,
   InfixExpression,
   PostfixExpression,
+  AssignmentExpression,
   CallExpression,
   TernaryExpression,
   ReturnStatement,
@@ -27,18 +28,20 @@ import {
 
 export enum Precedence {
   LOWEST = 1,
-  EQUALS = 2,
-  LESSGREATER = 3,
-  SUM = 4,
-  PRODUCT = 5,
-  PREFIX = 6,
-  CALL = 7,
-  POSTFIX = 8,
-  TERNARY = 9,
-  LOGICAL = 10,
+  ASSIGN = 2,
+  TERNARY = 3,
+  LOGICAL = 4,
+  EQUALS = 5,
+  LESSGREATER = 6,
+  SUM = 7,
+  PRODUCT = 8,
+  PREFIX = 9,
+  POSTFIX = 10,
+  CALL = 11,
 }
 
 const precedences: Partial<Record<TokenType, Precedence>> = {
+  [TokenType.EQUALS]: Precedence.ASSIGN,
   [TokenType.EQUALS_EQUALS]: Precedence.EQUALS,
   [TokenType.NOT_EQUALS]: Precedence.EQUALS,
   [TokenType.LT]: Precedence.LESSGREATER,
@@ -139,6 +142,10 @@ export class Parser {
     this.registerInfix(
       TokenType.DECREMENT,
       this.parsePostfixExpression.bind(this)
+    );
+    this.registerInfix(
+      TokenType.EQUALS,
+      this.parseAssignmentExpression.bind(this)
     );
   }
 
@@ -278,7 +285,9 @@ export class Parser {
       TokenType.TYPE_FLOAT,
     ];
     if (!validTypes.includes(nextType)) {
-      this.errors.push(`Invalid type annotation: ${this.peekToken.literal}`);
+      this.errors.push(
+        `Invalid type annotation: ${this.peekToken.literal} at line ${this.peekToken.line}`
+      );
       return null;
     }
     this.nextToken();
@@ -337,14 +346,25 @@ export class Parser {
   private parseIfStatement(): IfStatement | null {
     const token = this.curToken;
 
-    if (!this.expectPeek(TokenType.LPAREN)) return null;
+    if (!this.expectPeek(TokenType.LPAREN)) {
+      return null;
+    }
     this.nextToken();
 
     const condition = this.parseExpression(Precedence.LOWEST);
-    if (!condition) return null;
+    if (!condition) {
+      this.errors.push(
+        `Expected condition expression for if statement at line ${this.curToken.line}`
+      );
+      return null;
+    }
 
-    if (!this.expectPeek(TokenType.RPAREN)) return null;
-    if (!this.expectPeek(TokenType.LCURLY)) return null;
+    if (!this.expectPeek(TokenType.RPAREN)) {
+      return null;
+    }
+    if (!this.expectPeek(TokenType.LCURLY)) {
+      return null;
+    }
 
     const consequence = this.parseBlockStatement();
 
@@ -360,7 +380,7 @@ export class Parser {
         alternative = this.parseBlockStatement();
       } else {
         this.errors.push(
-          `Expected 'if' or '{' after 'else', got ${this.peekToken.type}`
+          `Expected 'if' or '{' after 'else', got ${this.peekToken.type} at line ${this.peekToken.line}`
         );
         return null;
       }
@@ -371,10 +391,16 @@ export class Parser {
   private parseFunctionDecleration(): Statement | null {
     const token = this.curToken;
     if (!this.expectPeek(TokenType.IDENTIFIER)) {
+      this.errors.push(
+        `Expected function name (identifier) after 'function' keyword at line ${this.curToken.line}`
+      );
       return null;
     }
     const name = new Identifier(this.curToken, this.curToken.literal);
     if (!this.expectPeek(TokenType.LPAREN)) {
+      this.errors.push(
+        `Expected '(' after function name '${name.value}' at line ${this.curToken.line}`
+      );
       return null;
     }
     const params: Param[] = [];
@@ -382,6 +408,9 @@ export class Parser {
       this.nextToken();
       do {
         if (this.curToken.type !== TokenType.IDENTIFIER) {
+          this.errors.push(
+            `Expected parameter name (identifier) in function declaration at line ${this.curToken.line}`
+          );
           return null;
         }
         const paramNameToken = this.curToken;
@@ -401,6 +430,9 @@ export class Parser {
       } while (true);
     }
     if (!this.expectPeek(TokenType.RPAREN)) {
+      this.errors.push(
+        `Expected ')' or ',' after parameter in function '${name.value}' at line ${this.curToken.line}`
+      );
       return null;
     }
 
@@ -410,6 +442,9 @@ export class Parser {
     }
 
     if (!this.expectPeek(TokenType.LCURLY)) {
+      this.errors.push(
+        `Expected '{' before function body for function '${name.value}' at line ${this.curToken.line}`
+      );
       return null;
     }
     const wasInFunction = this.inFunction;
@@ -422,12 +457,14 @@ export class Parser {
   private parseVarStatement(): Statement | null {
     const token = this.curToken;
     if (!this.expectPeek(TokenType.IDENTIFIER)) {
+      this.errors.push(
+        `Expected variable name (identifier) after 'var' keyword at line ${this.curToken.line}`
+      );
       return null;
     }
 
     const name = new Identifier(this.curToken, this.curToken.literal);
 
-    // Optional type annotation
     let typeAnnotation: TypeNode | null = null;
     if (this.peekToken.type === TokenType.COLON) {
       typeAnnotation = this.parseTypeAnnotation();
@@ -446,6 +483,9 @@ export class Parser {
     if (this.peekToken.type === TokenType.SEMICOLON) {
       this.nextToken();
     } else {
+      this.errors.push(
+        `Expected ';' after var declaration for '${name.value}' at line ${this.peekToken.line}`
+      );
       return null;
     }
     return new VarStatement(token, name, typeAnnotation, expression);
@@ -454,6 +494,9 @@ export class Parser {
   private parseConstStatement(): Statement | null {
     const token = this.curToken;
     if (!this.expectPeek(TokenType.IDENTIFIER)) {
+      this.errors.push(
+        `Expected constant name (identifier) after 'const' keyword at line ${this.curToken.line}`
+      );
       return null;
     }
     const name = new Identifier(this.curToken, this.curToken.literal);
@@ -466,16 +509,28 @@ export class Parser {
       }
     }
 
-    let expression: Expression | null = null;
-    if (this.peekToken.type === TokenType.EQUALS) {
-      this.nextToken();
-      this.nextToken();
-      expression = this.parseExpression(Precedence.LOWEST);
+    if (!this.expectPeek(TokenType.EQUALS)) {
+      this.errors.push(
+        `Expected '=' after const identifier '${name.value}' at line ${this.curToken.line}`
+      );
+      return null;
+    }
+
+    this.nextToken();
+    const expression = this.parseExpression(Precedence.LOWEST);
+    if (!expression) {
+      this.errors.push(
+        `Expected expression after '=' in const declaration for '${name.value}' at line ${this.curToken.line}`
+      );
+      return null;
     }
 
     if (this.peekToken.type === TokenType.SEMICOLON) {
       this.nextToken();
     } else {
+      this.errors.push(
+        `Expected ';' after const declaration for '${name.value}' at line ${this.peekToken.line}`
+      );
       return null;
     }
     return new ConstStatement(token, name, typeAnnotation, expression);
@@ -484,6 +539,9 @@ export class Parser {
   private parseExpression(precedence: Precedence): Expression | null {
     const prefix = this.prefixParseFns[this.curToken.type];
     if (!prefix) {
+      this.errors.push(
+        `No prefix parse function found for token ${this.curToken.type} ('${this.curToken.literal}') at line ${this.curToken.line}`
+      );
       return null;
     }
     let leftExp = prefix.call(this);
@@ -501,10 +559,11 @@ export class Parser {
   }
 
   private parseExpressionStatement(): Statement | null {
-    const stmt = new ExpressionStatement(
-      this.curToken,
-      this.parseExpression(Precedence.LOWEST)!
-    );
+    const expression = this.parseExpression(Precedence.LOWEST);
+    if (!expression) {
+      return null;
+    }
+    const stmt = new ExpressionStatement(this.curToken, expression);
 
     if (!this.expectPeek(TokenType.SEMICOLON)) {
       return null;
@@ -515,7 +574,7 @@ export class Parser {
   private parseReturnStatement(): Statement | null {
     if (!this.inFunction) {
       this.errors.push(
-        `Return statement not allowed outside of function at line ${this.curToken.line}`
+        `Return statement is not allowed outside of a function body at line ${this.curToken.line}`
       );
       return null;
     }
@@ -524,10 +583,45 @@ export class Parser {
     let returnValue: Expression | null = null;
     if (!this.curTokenIs(TokenType.SEMICOLON)) {
       returnValue = this.parseExpression(Precedence.LOWEST);
+      if (!returnValue && !this.curTokenIs(TokenType.SEMICOLON)) {
+        this.errors.push(
+          `Expected expression or ';' after 'return' keyword at line ${this.curToken.line}`
+        );
+        return null;
+      }
     }
     if (!this.expectPeek(TokenType.SEMICOLON)) {
       return null;
     }
     return new ReturnStatement(token, returnValue);
+  }
+
+  private parseAssignmentExpression(left: Expression): Expression | null {
+    if (!(left instanceof Identifier)) {
+      this.errors.push(
+        `Invalid assignment target at line ${this.curToken.line}. Expected an identifier, got ${left.constructor.name}.`
+      );
+      return null;
+    }
+    const identifier = left as Identifier;
+    const assignToken = this.curToken;
+
+    const currentPrecedence = this.currentPrecedence();
+    this.nextToken();
+    const right = this.parseExpression(currentPrecedence - 1);
+
+    if (!right) {
+      this.errors.push(
+        `Expected expression after '=' in assignment to '${identifier.value}' at line ${assignToken.line}`
+      );
+      return null;
+    }
+
+    return new AssignmentExpression(
+      assignToken,
+      identifier,
+      assignToken.literal,
+      right
+    );
   }
 }

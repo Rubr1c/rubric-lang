@@ -122,6 +122,8 @@ export class PostfixExpression implements Expression {
     this.left = left;
   }
 
+  expressionNode(): void {}
+
   tokenLiteral(): string {
     return this.token.literal;
   }
@@ -184,5 +186,45 @@ export class TernaryExpression implements Expression {
 
   toString(): string {
     return `(${this.condition.toString()} ? ${this.consequent.toString()} : ${this.alternate.toString()})`;
+  }
+}
+
+export class AssignmentExpression implements Expression {
+  constructor(
+    public token: Token,
+    public name: Identifier,
+    public operator: string,
+    public value: Expression
+  ) {}
+
+  expressionNode(): void {}
+
+  tokenLiteral(): string {
+    return this.token.literal;
+  }
+
+  toString(): string {
+    return `(${this.name.toString()} ${
+      this.operator
+    } ${this.value.toString()})`;
+  }
+}
+
+export class CallExpression implements Expression {
+  constructor(
+    public token: Token,
+    public func: Expression,
+    public args: Expression[]
+  ) {}
+
+  expressionNode(): void {}
+
+  tokenLiteral(): string {
+    return this.token.literal;
+  }
+
+  toString(): string {
+    const argStrings = this.args.map((arg) => arg.toString());
+    return `${this.func.toString()}(${argStrings.join(', ')})`;
   }
 }

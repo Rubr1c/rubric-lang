@@ -10,6 +10,7 @@ import {
   PostfixExpression,
   InfixExpression,
   TernaryExpression,
+  CallExpression,
 } from '../src/ast/expressions';
 import {
   VarStatement,
@@ -21,11 +22,7 @@ import {
   WhileStatement,
   DoWhileStatement,
 } from '../src/ast/statements';
-import {
-  CallExpression,
-  FunctionLiteral,
-  FunctionDeclaration,
-} from '../src/ast/functions';
+import { FunctionLiteral, FunctionDeclaration } from '../src/ast/functions';
 import { TypeNode } from '../src/ast/types';
 
 describe('AST Nodes', () => {

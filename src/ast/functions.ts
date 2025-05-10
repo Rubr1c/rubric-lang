@@ -4,27 +4,6 @@ import { BlockStatement } from './statements';
 import { Identifier } from './expressions';
 import { TypeNode } from './types';
 
-export class CallExpression implements Expression {
-  public token: Token;
-  public callee: Expression;
-  public args: Expression[];
-
-  constructor(token: Token, callee: Expression, args: Expression[] = []) {
-    this.token = token;
-    this.callee = callee;
-    this.args = args;
-  }
-
-  tokenLiteral(): string {
-    return this.token.literal;
-  }
-
-  toString(): string {
-    const argStr = this.args.map((a) => a.toString()).join(', ');
-    return `${this.callee.toString()}(${argStr})`;
-  }
-}
-
 export class FunctionLiteral implements Expression {
   public token: Token;
   public name?: Identifier;

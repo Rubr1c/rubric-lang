@@ -32,8 +32,14 @@ const main = () => {
     const lexer = new Lexer(sourceCode);
     const parser = new Parser(lexer);
     const program = parser.parseProgram();
-    console.log('--- AST ---');
-    console.dir(program, { depth: null });
+    // Print parser errors if any
+    if (parser.errors.length > 0) {
+      console.error('Parser errors:');
+      parser.errors.forEach((err) => console.error(err));
+    } else {
+      console.log('--- AST ---');
+      console.dir(program, { depth: null });
+    }
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.error(`Error: File not found at ${resolvedFilePath}`);
