@@ -402,7 +402,6 @@ export class Parser {
       return null;
     }
 
-
     if (!this.expectPeek(TokenType.SEMICOLON)) {
       return null;
     }
@@ -622,9 +621,7 @@ export class Parser {
       expression = this.parseExpression(Precedence.LOWEST);
     }
 
-    if (this.peekToken.type === TokenType.SEMICOLON) {
-      this.nextToken();
-    } else {
+    if (!this.expectPeek(TokenType.SEMICOLON)) {
       this.errors.push(
         `Expected ';' after var declaration for '${name.value}' at line ${this.peekToken.line}`
       );
@@ -667,14 +664,13 @@ export class Parser {
       return null;
     }
 
-    if (this.peekToken.type === TokenType.SEMICOLON) {
-      this.nextToken();
-    } else {
+    if (!this.expectPeek(TokenType.SEMICOLON)) {
       this.errors.push(
         `Expected ';' after const declaration for '${name.value}' at line ${this.peekToken.line}`
       );
       return null;
     }
+
     return new ConstStatement(token, name, typeAnnotation, expression);
   }
 
