@@ -248,7 +248,7 @@ describe('Parser', () => {
     tests.forEach((tt) => {
       it(`parses return statement "${tt.input}" correctly`, () => {
         // To test return statements, we need to parse them within a function scope
-        const wrappedInput = `function testFunc(): void { ${tt.input} }`;
+        const wrappedInput = `fn testFunc(): void { ${tt.input} }`;
         const l = new Lexer(wrappedInput);
         const p = new Parser(l);
         const program = p.parseProgram();
