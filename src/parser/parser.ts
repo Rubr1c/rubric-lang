@@ -25,6 +25,7 @@ import {
   BlockStatement,
   IfStatement,
   ForStatement,
+  WhileStatement,
 } from '../ast';
 
 export enum Precedence {
@@ -366,9 +367,41 @@ export class Parser {
         return this.parseReturnStatement();
       case TokenType.FOR_STATEMENT:
         return this.parseForStatement();
+      case TokenType.WHILE_STATEMENT:
+        return this.parseWhileStatement();
       default:
         return this.parseExpressionStatement();
     }
+  }
+
+  private parseWhileStatement(): Statement | null {
+    const token = this.curToken;
+
+    if (!this.expectPeek(TokenType.LPAREN)) {
+      return null;
+    }
+    this.nextToken();
+
+    const condition = this.parseExpression(Precedence.LOWEST);
+
+    if (!condition) {
+      this.errors.push(
+        `Expected condition expression for while statement at line ${this.curToken.line}`
+      );
+      return null;
+    }
+
+    if (!this.expectPeek(TokenType.RPAREN)) {
+      return null;
+    }
+
+    if (!this.expectPeek(TokenType.LCURLY)) {
+      return null;
+    }
+
+    const body = this.parseBlockStatement();
+
+    return new WhileStatement(token, condition, body);
   }
 
   private parseForStatement(): ForStatement | null {
@@ -390,16 +423,13 @@ export class Parser {
     this.nextToken();
 
     const condition = this.parseExpression(Precedence.LOWEST);
-    
 
-   
     if (!this.expectPeek(TokenType.SEMICOLON)) {
       return null;
     }
     this.nextToken();
 
     const update = this.parseExpression(Precedence.LOWEST);
-    
 
     if (!this.expectPeek(TokenType.RPAREN)) {
       return null;
