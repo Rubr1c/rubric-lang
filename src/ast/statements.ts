@@ -147,17 +147,17 @@ export class IfStatement implements Statement {
 
 export class ForStatement implements Statement {
   public token: Token;
-  public init?: Statement;
-  public condition?: Expression;
-  public update?: Expression;
+  public init: Statement | null;
+  public condition: Expression | null;
+  public update: Expression | null;
   public body: BlockStatement;
 
   constructor(
     token: Token,
     body: BlockStatement,
-    init?: Statement,
-    condition?: Expression,
-    update?: Expression
+    init: Statement | null = null,
+    condition: Expression | null = null,
+    update: Expression | null = null
   ) {
     this.token = token;
     this.init = init;

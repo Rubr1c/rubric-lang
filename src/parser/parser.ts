@@ -24,6 +24,7 @@ import {
   Param,
   BlockStatement,
   IfStatement,
+  ForStatement,
 } from '../ast';
 
 export enum Precedence {
@@ -363,9 +364,54 @@ export class Parser {
         return this.parseFunctionDecleration();
       case TokenType.RETURN_STATEMENT:
         return this.parseReturnStatement();
+      case TokenType.FOR_STATEMENT:
+        return this.parseForStatement();
       default:
         return this.parseExpressionStatement();
     }
+  }
+
+  private parseForStatement(): ForStatement | null {
+    const token = this.curToken;
+
+    if (!this.expectPeek(TokenType.LPAREN)) {
+      return null;
+    }
+    this.nextToken();
+
+    const init = this.parseStatement();
+
+    if (!this.curTokenIs(TokenType.SEMICOLON)) {
+      this.errors.push(
+        `Expected ';' after for-loop initializer at line ${this.curToken.line}, got ${this.curToken.type}`
+      );
+      return null;
+    }
+    this.nextToken();
+
+    const condition = this.parseExpression(Precedence.LOWEST);
+    
+
+   
+    if (!this.expectPeek(TokenType.SEMICOLON)) {
+      return null;
+    }
+    this.nextToken();
+
+    const update = this.parseExpression(Precedence.LOWEST);
+    
+
+    if (!this.expectPeek(TokenType.RPAREN)) {
+      return null;
+    }
+
+    if (!this.expectPeek(TokenType.LCURLY)) {
+      return null;
+    }
+
+    const body = this.parseBlockStatement();
+
+    return new ForStatement(token, body, init, condition, update);
   }
 
   private parseIfStatement(): IfStatement | null {
