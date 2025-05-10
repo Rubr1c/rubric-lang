@@ -22,6 +22,7 @@ import {
   FunctionDeclaration,
   Param,
   BlockStatement,
+  IfStatement,
 } from '../ast';
 
 export enum Precedence {
@@ -38,10 +39,12 @@ export enum Precedence {
 }
 
 const precedences: Partial<Record<TokenType, Precedence>> = {
-  [TokenType.EQUALS]: Precedence.EQUALS,
+  [TokenType.EQUALS_EQUALS]: Precedence.EQUALS,
   [TokenType.NOT_EQUALS]: Precedence.EQUALS,
   [TokenType.LT]: Precedence.LESSGREATER,
   [TokenType.GT]: Precedence.LESSGREATER,
+  [TokenType.LT_EQUALS]: Precedence.LESSGREATER,
+  [TokenType.GT_EQUALS]: Precedence.LESSGREATER,
 
   [TokenType.PLUS]: Precedence.SUM,
   [TokenType.MINUS]: Precedence.SUM,
@@ -320,6 +323,8 @@ export class Parser {
         return this.parseVarStatement();
       case TokenType.CONST:
         return this.parseConstStatement();
+      case TokenType.IF_STATEMENT:
+        return this.parseIfStatement();
       case TokenType.FUNCTION:
         return this.parseFunctionDecleration();
       case TokenType.RETURN_STATEMENT:
@@ -327,6 +332,40 @@ export class Parser {
       default:
         return this.parseExpressionStatement();
     }
+  }
+
+  private parseIfStatement(): IfStatement | null {
+    const token = this.curToken;
+
+    if (!this.expectPeek(TokenType.LPAREN)) return null;
+    this.nextToken();
+
+    const condition = this.parseExpression(Precedence.LOWEST);
+    if (!condition) return null;
+
+    if (!this.expectPeek(TokenType.RPAREN)) return null;
+    if (!this.expectPeek(TokenType.LCURLY)) return null;
+
+    const consequence = this.parseBlockStatement();
+
+    let alternative: BlockStatement | IfStatement | undefined;
+
+    if (this.peekTokenIs(TokenType.ELSE_STATEMENT)) {
+      this.nextToken();
+      if (this.peekTokenIs(TokenType.IF_STATEMENT)) {
+        this.nextToken();
+        alternative = this.parseIfStatement()!;
+      } else if (this.peekTokenIs(TokenType.LCURLY)) {
+        this.nextToken();
+        alternative = this.parseBlockStatement();
+      } else {
+        this.errors.push(
+          `Expected 'if' or '{' after 'else', got ${this.peekToken.type}`
+        );
+        return null;
+      }
+    }
+    return new IfStatement(token, condition, consequence, alternative);
   }
 
   private parseFunctionDecleration(): Statement | null {
