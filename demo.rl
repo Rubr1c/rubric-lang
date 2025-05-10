@@ -1,5 +1,5 @@
 
-const x = 0.0;
+var doSomething = fn(a: int, b: float) { a = a + 1; };
 
 
 

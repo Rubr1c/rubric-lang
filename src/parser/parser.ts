@@ -655,31 +655,22 @@ export class Parser {
 
     if (expression) {
       if (explicitTypeAnnotation) {
-        const inferredTypeInfo = this.inferBasicTypeFromExpression(expression);
+        const inferredTypeNode = this.inferTypeFromExpression(expression);
         if (
-          inferredTypeInfo &&
-          inferredTypeInfo.typeName !== explicitTypeAnnotation.value
+          inferredTypeNode &&
+          inferredTypeNode.value !== explicitTypeAnnotation.value
         ) {
           this.errors.push(
             `Type mismatch for variable '${name.value}' at line ${name.token.line}. ` +
-              `Explicitly typed as '${explicitTypeAnnotation.value}' but initializer is of inferred type '${inferredTypeInfo.typeName}'.`
+              `Explicitly typed as '${explicitTypeAnnotation.value}' but initializer is of inferred type '${inferredTypeNode.value}'.`
           );
           return null;
         }
         finalTypeAnnotationNode = explicitTypeAnnotation;
       } else {
-        const inferredTypeInfo = this.inferBasicTypeFromExpression(expression);
-        if (inferredTypeInfo) {
-          const syntheticToken: Token = {
-            type: inferredTypeInfo.tokenType,
-            literal: inferredTypeInfo.typeName,
-            line: inferredTypeInfo.originalToken.line,
-            column: inferredTypeInfo.originalToken.column,
-          };
-          finalTypeAnnotationNode = new TypeNode(
-            syntheticToken,
-            inferredTypeInfo.typeName
-          );
+        const inferredTypeNode = this.inferTypeFromExpression(expression);
+        if (inferredTypeNode) {
+          finalTypeAnnotationNode = inferredTypeNode;
         } else {
           this.errors.push(
             `Cannot infer type for initialized variable '${name.value}' at line ${name.token.line}. Please provide an explicit type annotation.`
@@ -711,7 +702,6 @@ export class Parser {
       );
       return null;
     }
-
     return new VarStatement(
       varToken,
       name,
@@ -757,31 +747,22 @@ export class Parser {
     let finalTypeAnnotationNode: TypeNode | null = null;
 
     if (explicitTypeAnnotation) {
-      const inferredTypeInfo = this.inferBasicTypeFromExpression(expression);
+      const inferredTypeNode = this.inferTypeFromExpression(expression!);
       if (
-        inferredTypeInfo &&
-        inferredTypeInfo.typeName !== explicitTypeAnnotation.value
+        inferredTypeNode &&
+        inferredTypeNode.value !== explicitTypeAnnotation.value
       ) {
         this.errors.push(
           `Type mismatch for constant '${name.value}' at line ${name.token.line}. ` +
-            `Explicitly typed as '${explicitTypeAnnotation.value}' but initializer is of inferred type '${inferredTypeInfo.typeName}'.`
+            `Explicitly typed as '${explicitTypeAnnotation.value}' but initializer is of inferred type '${inferredTypeNode.value}'.`
         );
         return null;
       }
       finalTypeAnnotationNode = explicitTypeAnnotation;
     } else {
-      const inferredTypeInfo = this.inferBasicTypeFromExpression(expression);
-      if (inferredTypeInfo) {
-        const syntheticToken: Token = {
-          type: inferredTypeInfo.tokenType,
-          literal: inferredTypeInfo.typeName,
-          line: inferredTypeInfo.originalToken.line,
-          column: inferredTypeInfo.originalToken.column,
-        };
-        finalTypeAnnotationNode = new TypeNode(
-          syntheticToken,
-          inferredTypeInfo.typeName
-        );
+      const inferredTypeNode = this.inferTypeFromExpression(expression!);
+      if (inferredTypeNode) {
+        finalTypeAnnotationNode = inferredTypeNode;
       } else {
         this.errors.push(
           `Cannot infer type for constant '${name.value}' at line ${name.token.line}. Please provide an explicit type annotation.`
@@ -808,7 +789,7 @@ export class Parser {
       constToken,
       name,
       finalTypeAnnotationNode,
-      expression
+      expression!
     );
   }
 
@@ -910,36 +891,55 @@ export class Parser {
     );
   }
 
-  private inferBasicTypeFromExpression(
-    expression: Expression
-  ): { typeName: string; tokenType: TokenType; originalToken: Token } | null {
+  private inferTypeFromExpression(expression: Expression): TypeNode | null {
+    let typeName: string;
+    let tokenTypeForTypeNode: TokenType;
+    let originalTokenForPos: Token;
+
     if (expression instanceof IntegerLiteral) {
-      return {
-        typeName: 'int',
-        tokenType: TokenType.TYPE_INT,
-        originalToken: expression.token,
-      };
+      typeName = 'int';
+      tokenTypeForTypeNode = TokenType.TYPE_INT;
+      originalTokenForPos = expression.token;
     } else if (expression instanceof FloatLiteral) {
-      return {
-        typeName: 'float',
-        tokenType: TokenType.TYPE_FLOAT,
-        originalToken: expression.token,
-      };
+      typeName = 'float';
+      tokenTypeForTypeNode = TokenType.TYPE_FLOAT;
+      originalTokenForPos = expression.token;
     } else if (expression instanceof StringLiteral) {
-      return {
-        typeName: 'string',
-        tokenType: TokenType.TYPE_STRING,
-        originalToken: expression.token,
-      };
+      typeName = 'string';
+      tokenTypeForTypeNode = TokenType.TYPE_STRING;
+      originalTokenForPos = expression.token;
     } else if (expression instanceof BooleanLiteral) {
-      return {
-        typeName: 'boolean',
-        tokenType: TokenType.TYPE_BOOLEAN,
-        originalToken: expression.token,
+      typeName = 'boolean';
+      tokenTypeForTypeNode = TokenType.TYPE_BOOLEAN;
+      originalTokenForPos = expression.token;
+    } else if (expression instanceof FunctionLiteral) {
+      const funcLit = expression as FunctionLiteral;
+      const paramTypes = funcLit.params.map((p) => p.type);
+      const returnTypeValue = funcLit.returnType!.value;
+
+      const paramsString = paramTypes.length > 0 ? paramTypes.join(', ') : '';
+      typeName = `fn(${paramsString}) => ${returnTypeValue}`;
+      tokenTypeForTypeNode = TokenType.IDENTIFIER;
+      originalTokenForPos = funcLit.token;
+
+      const syntheticSignatureToken: Token = {
+        type: tokenTypeForTypeNode,
+        literal: typeName,
+        line: originalTokenForPos.line,
+        column: originalTokenForPos.column,
       };
+      return new TypeNode(syntheticSignatureToken, typeName);
+    } else {
+      return null;
     }
-    // TODO: Could potentially infer for ArrayLiterals, ObjectLiterals, or even FunctionLiterals if a 'function' type exists
-    return null; // Cannot infer a simple type
+
+    const syntheticToken: Token = {
+      type: tokenTypeForTypeNode,
+      literal: typeName,
+      line: originalTokenForPos.line,
+      column: originalTokenForPos.column,
+    };
+    return new TypeNode(syntheticToken, typeName);
   }
 
   private parseFunctionLiteralExpression(): Expression | null {

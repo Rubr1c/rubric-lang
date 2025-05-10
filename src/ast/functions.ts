@@ -6,13 +6,13 @@ import { TypeNode } from './types';
 
 export class FunctionLiteral implements Expression {
   public token: Token;
-  public params: Identifier[];
-  public returnType?: TypeNode;
+  public params: Param[];
+  public returnType: TypeNode;
   public body: BlockStatement;
 
   constructor(
     token: Token,
-    params: Identifier[] = [],
+    params: Param[] = [],
     body: BlockStatement,
     returnType: TypeNode
   ) {
@@ -27,8 +27,10 @@ export class FunctionLiteral implements Expression {
   }
 
   toString(): string {
-    const paramsStr = this.params.map((p) => p.toString()).join(', ');
-    const returnStr = this.returnType ? `: ${this.returnType}` : '';
+    const paramsStr = this.params
+      .map((p) => `${p.value}: ${p.type.toString()}`)
+      .join(', ');
+    const returnStr = `: ${this.returnType.toString()}`;
     return `${this.tokenLiteral()}(${paramsStr})${returnStr} ${this.body.toString()}`;
   }
 }

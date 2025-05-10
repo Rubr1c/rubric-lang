@@ -111,19 +111,19 @@ describe('Parser', () => {
         input: 'var x = 5;',
         expectedIdentifier: 'x',
         expectedValue: 5,
-        expectedType: null,
+        expectedType: 'int',
       },
       {
         input: 'var y = true;',
         expectedIdentifier: 'y',
         expectedValue: true,
-        expectedType: null,
+        expectedType: 'boolean',
       },
       {
-        input: 'var foo = y;',
+        input: 'var foo: int = y;',
         expectedIdentifier: 'foo',
         expectedValue: 'y',
-        expectedType: null,
+        expectedType: 'int',
       },
       {
         input: "var bar: string = 'hello';",
@@ -199,7 +199,7 @@ describe('Parser', () => {
         input: 'const x = 5;',
         expectedIdentifier: 'x',
         expectedValue: 5,
-        expectedType: null,
+        expectedType: 'int',
       },
       {
         input: "const bar: string = 'hello';",
@@ -640,14 +640,14 @@ describe('Parser', () => {
       },
       {
         input:
-          'fn add(a: float, b: float): float { var result = a + b; return result; }',
+          'fn add(a: float, b: float): float { var result: float = a + b; return result; }',
         expectedName: 'add',
         expectedParams: [
           { name: 'a', type: 'float' },
           { name: 'b', type: 'float' },
         ],
         expectedReturnType: 'float',
-        expectedBodyContains: 'var result = (a + b);return result;',
+        expectedBodyContains: 'var result: float = (a + b); return result;',
       },
     ];
 
@@ -836,7 +836,6 @@ describe('Parser', () => {
       const bodyStmt = stmt.body.statements[0] as ExpressionStatement;
       expect((bodyStmt.expression as Identifier).value).toBe('i');
     });
-
   });
 
   describe('WhileStatement', () => {
@@ -926,8 +925,9 @@ describe('Parser', () => {
       const fnLiteral = varStmt.value as FunctionLiteral;
       expect(fnLiteral.params.length).toBe(1);
       expect(fnLiteral.params[0].value).toBe('a');
+      expect(fnLiteral.params[0].type.value).toBe('int');
       expect(fnLiteral.returnType).toBeInstanceOf(TypeNode);
-      expect(fnLiteral.returnType!.value).toBe('void'); // Should default to void
+      expect(fnLiteral.returnType!.value).toBe('void');
       expect(fnLiteral.body.statements.length).toBe(1);
     });
 
@@ -945,7 +945,9 @@ describe('Parser', () => {
 
       expect(fnLiteral.params.length).toBe(2);
       expect(fnLiteral.params[0].value).toBe('a');
+      expect(fnLiteral.params[0].type.value).toBe('int');
       expect(fnLiteral.params[1].value).toBe('b');
+      expect(fnLiteral.params[1].type.value).toBe('int');
       expect(fnLiteral.returnType).toBeInstanceOf(TypeNode);
       expect(fnLiteral.returnType!.value).toBe('int');
       expect(fnLiteral.body.statements.length).toBe(1);
@@ -969,6 +971,7 @@ describe('Parser', () => {
       const fnLit = callExpr.func as FunctionLiteral;
       expect(fnLit.params.length).toBe(1);
       expect(fnLit.params[0].value).toBe('val');
+      expect(fnLit.params[0].type.value).toBe('int');
       expect(fnLit.returnType).toBeInstanceOf(TypeNode);
       expect(fnLit.returnType!.value).toBe('boolean');
 

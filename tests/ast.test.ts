@@ -25,6 +25,7 @@ import {
 } from '../src/ast/statements';
 import { FunctionLiteral, FunctionDeclaration } from '../src/ast/functions';
 import { TypeNode } from '../src/ast/types';
+import { Param } from '../src/ast/functions'
 
 describe('AST Nodes', () => {
   it('Identifier should return correct literal and string', () => {
@@ -193,16 +194,20 @@ describe('AST Nodes', () => {
       { type: TokenType.LCURLY, literal: '{' },
       []
     );
-    const returnTok: Token = { type: TokenType.TYPE_STRING, literal: 'void' };
-    const returnType = new TypeNode(returnTok, 'void');
-    const fnLit = new FunctionLiteral(
-      fnTok,
-      [callee],
-      body,
-      returnType
-    );
+    const fnReturnToken: Token = { type: TokenType.TYPE_VOID, literal: 'void' };
+    const fnReturnType = new TypeNode(fnReturnToken, 'void');
+
+    const paramNameToken: Token = { type: TokenType.IDENTIFIER, literal: 'p1' };
+    const paramTypeNameToken: Token = {
+      type: TokenType.TYPE_STRING,
+      literal: 'string',
+    };
+    const paramTypeNode = new TypeNode(paramTypeNameToken, 'string');
+    const param1 = new Param(paramNameToken, 'p1', paramTypeNode);
+
+    const fnLit = new FunctionLiteral(fnTok, [param1], body, fnReturnType);
     expect(fnLit.tokenLiteral()).toBe('fn');
-    expect(fnLit.toString()).toContain('fn(foo)');
+    expect(fnLit.toString()).toContain('fn(p1: string)');
   });
 
   it('TypeNode should return correct string', () => {
