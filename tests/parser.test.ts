@@ -24,6 +24,10 @@ import {
   IfStatement,
   TernaryExpression,
   Expression,
+  ForStatement,
+  WhileStatement,
+  DoWhileStatement,
+  FunctionLiteral,
 } from '../src/ast';
 
 function checkParserErrors(parser: Parser): void {
@@ -618,8 +622,7 @@ describe('Parser', () => {
   describe('FunctionDeclarationStatement', () => {
     const tests = [
       {
-        input:
-          'fn myFunction(x: int, y: string): boolean { return x > 0; }',
+        input: 'fn myFunction(x: int, y: string): boolean { return x > 0; }',
         expectedName: 'myFunction',
         expectedParams: [
           { name: 'x', type: 'int' },
@@ -789,6 +792,193 @@ describe('Parser', () => {
       expect(expr.condition.toString()).toBe('(a > b)');
       testLiteralExpression(expr.consequent, 10);
       testLiteralExpression(expr.alternate, 20);
+    });
+  });
+
+  describe('ForStatement', () => {
+    it('parses a full for statement correctly', () => {
+      const input = 'for (var i = 0; i < 10; i = i + 1) { i; }';
+      const l = new Lexer(input);
+      const p = new Parser(l);
+      const program = p.parseProgram();
+      checkParserErrors(p);
+
+      expect(program.statements.length).toBe(1);
+      const stmt = program.statements[0] as ForStatement;
+      expect(stmt).toBeInstanceOf(ForStatement);
+
+      // Check initializer (var i = 0;)
+      expect(stmt.init).toBeInstanceOf(VarStatement);
+      const initVarStmt = stmt.init as VarStatement;
+      expect(initVarStmt.name.value).toBe('i');
+      testLiteralExpression(initVarStmt.value!, 0);
+
+      // Check condition (i < 10)
+      expect(stmt.condition).toBeInstanceOf(InfixExpression);
+      const condExpr = stmt.condition as InfixExpression;
+      testLiteralExpression(condExpr.left, 'i');
+      expect(condExpr.operator).toBe('<');
+      testLiteralExpression(condExpr.right, 10);
+
+      // Check update (i = i + 1)
+      expect(stmt.update).toBeInstanceOf(AssignmentExpression);
+      const updateExpr = stmt.update as AssignmentExpression;
+      expect(updateExpr.name.value).toBe('i');
+      expect(updateExpr.value).toBeInstanceOf(InfixExpression);
+      const updateInfix = updateExpr.value as InfixExpression;
+      testLiteralExpression(updateInfix.left, 'i');
+      expect(updateInfix.operator).toBe('+');
+      testLiteralExpression(updateInfix.right, 1);
+
+      // Check body
+      expect(stmt.body).toBeInstanceOf(BlockStatement);
+      expect(stmt.body.statements.length).toBe(1);
+      const bodyStmt = stmt.body.statements[0] as ExpressionStatement;
+      expect((bodyStmt.expression as Identifier).value).toBe('i');
+    });
+
+  });
+
+  describe('WhileStatement', () => {
+    it('parses a while statement correctly', () => {
+      const input = 'while (x < 10) { x = x + 1; }';
+      const l = new Lexer(input);
+      const p = new Parser(l);
+      const program = p.parseProgram();
+      checkParserErrors(p);
+
+      expect(program.statements.length).toBe(1);
+      const stmt = program.statements[0] as WhileStatement;
+      expect(stmt).toBeInstanceOf(WhileStatement);
+
+      expect(stmt.condition).toBeInstanceOf(InfixExpression);
+      const condExpr = stmt.condition as InfixExpression;
+      testLiteralExpression(condExpr.left, 'x');
+      expect(condExpr.operator).toBe('<');
+      testLiteralExpression(condExpr.right, 10);
+
+      expect(stmt.body).toBeInstanceOf(BlockStatement);
+      expect(stmt.body.statements.length).toBe(1);
+      const bodyStmt = stmt.body.statements[0] as ExpressionStatement;
+      expect(bodyStmt.expression).toBeInstanceOf(AssignmentExpression);
+    });
+  });
+
+  describe('DoWhileStatement', () => {
+    it('parses a do-while statement correctly', () => {
+      const input = 'do { x = x + 1; } while (x < 10);';
+      const l = new Lexer(input);
+      const p = new Parser(l);
+      const program = p.parseProgram();
+      checkParserErrors(p);
+
+      expect(program.statements.length).toBe(1);
+      const stmt = program.statements[0] as DoWhileStatement;
+      expect(stmt).toBeInstanceOf(DoWhileStatement);
+
+      expect(stmt.body).toBeInstanceOf(BlockStatement);
+      expect(stmt.body.statements.length).toBe(1);
+      const bodyStmt = stmt.body.statements[0] as ExpressionStatement;
+      expect(bodyStmt.expression).toBeInstanceOf(AssignmentExpression);
+
+      expect(stmt.condition).toBeInstanceOf(InfixExpression);
+      const condExpr = stmt.condition as InfixExpression;
+      testLiteralExpression(condExpr.left, 'x');
+      expect(condExpr.operator).toBe('<');
+      testLiteralExpression(condExpr.right, 10);
+    });
+  });
+
+  describe('FunctionLiteralExpression', () => {
+    it('parses an anonymous function assigned to a variable (explicit void return)', () => {
+      const input = 'var myFunc = fn(): void { return; };';
+      const l = new Lexer(input);
+      const p = new Parser(l);
+      const program = p.parseProgram();
+      checkParserErrors(p);
+
+      expect(program.statements.length).toBe(1);
+      const varStmt = program.statements[0] as VarStatement;
+      expect(varStmt).toBeInstanceOf(VarStatement);
+      expect(varStmt.name.value).toBe('myFunc');
+      expect(varStmt.value).toBeInstanceOf(FunctionLiteral);
+
+      const fnLiteral = varStmt.value as FunctionLiteral;
+      expect(fnLiteral.params.length).toBe(0);
+      expect(fnLiteral.returnType).toBeInstanceOf(TypeNode);
+      expect(fnLiteral.returnType!.value).toBe('void');
+      expect(fnLiteral.body.statements.length).toBe(1);
+      expect(fnLiteral.body.statements[0]).toBeInstanceOf(ReturnStatement);
+    });
+
+    it('parses an anonymous function assigned to a variable (implicit void return)', () => {
+      const input = 'var doSomething = fn(a: int) { a = a + 1; };';
+      const l = new Lexer(input);
+      const p = new Parser(l);
+      const program = p.parseProgram();
+      checkParserErrors(p);
+
+      expect(program.statements.length).toBe(1);
+      const varStmt = program.statements[0] as VarStatement;
+      expect(varStmt.name.value).toBe('doSomething');
+      expect(varStmt.value).toBeInstanceOf(FunctionLiteral);
+
+      const fnLiteral = varStmt.value as FunctionLiteral;
+      expect(fnLiteral.params.length).toBe(1);
+      expect(fnLiteral.params[0].value).toBe('a');
+      expect(fnLiteral.returnType).toBeInstanceOf(TypeNode);
+      expect(fnLiteral.returnType!.value).toBe('void'); // Should default to void
+      expect(fnLiteral.body.statements.length).toBe(1);
+    });
+
+    it('parses an anonymous function with parameters and return type', () => {
+      const input = 'var add = fn(a: int, b: int): int { return a + b; };';
+      const l = new Lexer(input);
+      const p = new Parser(l);
+      const program = p.parseProgram();
+      checkParserErrors(p);
+
+      expect(program.statements.length).toBe(1);
+      const varStmt = program.statements[0] as VarStatement;
+      expect(varStmt.value).toBeInstanceOf(FunctionLiteral);
+      const fnLiteral = varStmt.value as FunctionLiteral;
+
+      expect(fnLiteral.params.length).toBe(2);
+      expect(fnLiteral.params[0].value).toBe('a');
+      expect(fnLiteral.params[1].value).toBe('b');
+      expect(fnLiteral.returnType).toBeInstanceOf(TypeNode);
+      expect(fnLiteral.returnType!.value).toBe('int');
+      expect(fnLiteral.body.statements.length).toBe(1);
+    });
+
+    it('parses an IIFE in an if condition', () => {
+      const input =
+        'if (fn(val: int): boolean { return val > 0; }(5)) { true; }';
+      const l = new Lexer(input);
+      const p = new Parser(l);
+      const program = p.parseProgram();
+      checkParserErrors(p);
+
+      expect(program.statements.length).toBe(1);
+      const ifStmt = program.statements[0] as IfStatement;
+      expect(ifStmt).toBeInstanceOf(IfStatement);
+      expect(ifStmt.condition).toBeInstanceOf(CallExpression);
+
+      const callExpr = ifStmt.condition as CallExpression;
+      expect(callExpr.func).toBeInstanceOf(FunctionLiteral);
+      const fnLit = callExpr.func as FunctionLiteral;
+      expect(fnLit.params.length).toBe(1);
+      expect(fnLit.params[0].value).toBe('val');
+      expect(fnLit.returnType).toBeInstanceOf(TypeNode);
+      expect(fnLit.returnType!.value).toBe('boolean');
+
+      expect(callExpr.args.length).toBe(1);
+      testLiteralExpression(callExpr.args[0], 5);
+
+      expect(ifStmt.consequence.statements.length).toBe(1);
+      expect(
+        (ifStmt.consequence.statements[0] as ExpressionStatement).expression
+      ).toBeInstanceOf(BooleanLiteral);
     });
   });
 });
