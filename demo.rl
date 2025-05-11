@@ -1,7 +1,7 @@
 
 
-fn add(x: int, y: int): int {
+var add = fn(x: int, y: int): int {
     return x + y;
-}
+};
 
-add(1, 2);
+add(2, 2);

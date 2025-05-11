@@ -97,11 +97,16 @@ export class ErrorValue implements RuntimeObject {
 }
 
 export class FunctionValue implements RuntimeObject {
+  public fnName?: string;
+
   constructor(
     public params: Param[],
     public body: BlockStatement,
-    public env: Environment
-  ) {}
+    public env: Environment,
+    fnName?: string
+  ) {
+    this.fnName = fnName;
+  }
 
   type(): ObjectType {
     return ObjectType.FUNCTION;

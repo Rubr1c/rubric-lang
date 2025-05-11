@@ -470,28 +470,110 @@ function applyFunction(
   }
 
   const func = fnObj as FunctionValue;
+  const funcNameForError = func.fnName || 'anonymous';
 
   if (func.params.length !== args.length) {
     return new ErrorValue(
-      `Expected ${func.params.length} arguments but got ${args.length}`
+      `Expected ${func.params.length} arguments for function '${funcNameForError}' but got ${args.length}`
     );
+  }
+
+  // TYPE CHECKING ARGUMENTS
+  for (let i = 0; i < func.params.length; i++) {
+    const param = func.params[i];
+    const expectedTypeStr = param.type.value;
+    const argRuntimeValue = args[i];
+
+    if (argRuntimeValue === null) {
+      if (
+        expectedTypeStr !== 'any' &&
+        expectedTypeStr !== 'object' &&
+        expectedTypeStr !== 'null'
+      ) {
+        return new ErrorValue(
+          `Type Error: Argument ${i + 1} ('${
+            param.value
+          }') for function '${funcNameForError}' expected type '${expectedTypeStr}' but received null.`
+        );
+      }
+    } else {
+      const actualRuntimeType = argRuntimeValue.type();
+      let actualTypeStr: string;
+
+      switch (actualRuntimeType) {
+        case ObjectType.INTEGER:
+          actualTypeStr = 'int';
+          break;
+        case ObjectType.FLOAT:
+          actualTypeStr = 'float';
+          break;
+        case ObjectType.BOOLEAN:
+          actualTypeStr = 'boolean';
+          break;
+        case ObjectType.STRING:
+          actualTypeStr = 'string';
+          break;
+        case ObjectType.NULL:
+          actualTypeStr = 'null';
+          break;
+        case ObjectType.FUNCTION:
+          actualTypeStr = 'function';
+          break;
+        case ObjectType.ERROR:
+          actualTypeStr = 'error';
+          break;
+        case ObjectType.RETURN_VALUE:
+          actualTypeStr = 'return_value';
+          break;
+        default:
+          const _exhaustiveCheck: never = actualRuntimeType;
+          return new ErrorValue(
+            `Internal Error: Unhandled object type '${_exhaustiveCheck}' during function call type checking.`
+          );
+      }
+
+      if (expectedTypeStr !== actualTypeStr) {
+        if (expectedTypeStr !== 'any' && expectedTypeStr !== 'object') {
+          if (expectedTypeStr === 'float' && actualTypeStr === 'int') {
+          } else {
+            return new ErrorValue(
+              `Type Error: Argument ${i + 1} ('${
+                param.value
+              }') for function '${funcNameForError}' expected type '${expectedTypeStr}' but got type '${actualTypeStr}'.`
+            );
+          }
+        }
+      }
+    }
   }
 
   const functionEnv = new Environment(func.env);
 
   for (let i = 0; i < func.params.length; i++) {
     const paramName = func.params[i].value;
-    const argValue = args[i] === null ? new NullValue() : args[i]!;
-    const defineResult = functionEnv.define(paramName, argValue, false);
+    let argValueToBind = args[i];
+
+    // If an int is passed to a float parameter, convert it to FloatValue for consistency within the function body if desired.
+    // Or, rely on arithmetic operations to handle mixed types if that's the design.
+    // For this example, let's do an explicit conversion before binding if types were int -> float.
+    const expectedParamTypeStr = func.params[i].type.value;
+    if (
+      expectedParamTypeStr === 'float' &&
+      argValueToBind instanceof IntegerValue
+    ) {
+      argValueToBind = new FloatValue(argValueToBind.value);
+    }
+
+    const finalArgValue =
+      argValueToBind === null ? new NullValue() : argValueToBind!;
+    const defineResult = functionEnv.define(paramName, finalArgValue, false);
     if (defineResult instanceof ErrorValue) {
       return defineResult;
     }
   }
 
   const evaluatedBody = evaluate(func.body, functionEnv);
-
   const unwrappedResult = unwrapReturnValue(evaluatedBody);
-
   return unwrappedResult === null ? new NullValue() : unwrappedResult;
 }
 
@@ -779,7 +861,7 @@ function evalFunctionLiteralNode(
   node: FunctionLiteral,
   env: Environment
 ): RuntimeObject {
-  return new FunctionValue(node.params, node.body, env);
+  return new FunctionValue(node.params, node.body, env, undefined);
 }
 
 function evalCallExpressionNode(
@@ -809,15 +891,13 @@ function evalFunctionDeclarationStatementNode(
   env: Environment
 ): RuntimeObject | null {
   const funcName = node.name.value;
-  const funcValue = new FunctionValue(node.params, node.body, env); // env is captured here
+  const funcValue = new FunctionValue(node.params, node.body, env, funcName);
 
-  // Define the function in the current environment.
-  // Functions declared this way are typically constant bindings.
   const defineResult = env.define(funcName, funcValue, true);
 
   if (defineResult instanceof ErrorValue) {
-    return defineResult; // Propagate re-declaration error or other define errors
+    return defineResult;
   }
 
-  return new NullValue(); // Function declarations don't evaluate to a value themselves
+  return new NullValue();
 }
