@@ -1,9 +1,7 @@
 
 
-var add = fn(x: int, y: int): int {
-    return x + y;
-};
 
-var sum: int = add(2, 2);
 
-display("cold", sum);
+var x: int = 1 > 2 ? 5 : 6;
+
+display(x);

@@ -307,10 +307,12 @@ function evalPrefixExpression(
       return isTruthy(right) ? new BooleanValue(false) : new BooleanValue(true);
     case '-':
       if (right instanceof IntegerValue) {
-        return new IntegerValue(-right.value);
+        const val = -right.value;
+        return new IntegerValue(val === -0 ? 0 : val);
       }
       if (right instanceof FloatValue) {
-        return new FloatValue(-right.value);
+        const val = -right.value;
+        return new FloatValue(val === -0 ? 0.0 : val);
       }
       return new ErrorValue(
         `Type Error: Cannot apply operator '-' to type ${right.type()}`
@@ -329,7 +331,7 @@ function evalInfixExpression(
 ): RuntimeObject {
   if (left === null || right === null) {
     return new ErrorValue(
-      'Operands for infix expression are unexpectedly null in helper function'
+      'Operands for infix expression are unexpectedly null in core helper.'
     );
   }
 
@@ -339,13 +341,6 @@ function evalInfixExpression(
   if (left instanceof FloatValue && right instanceof FloatValue) {
     return evalFloatInfixExpression(operator, left, right);
   }
-  if (left instanceof FloatValue && right instanceof IntegerValue) {
-    return evalFloatInfixExpression(
-      operator,
-      left,
-      new FloatValue(right.value)
-    );
-  }
   if (left instanceof IntegerValue && right instanceof FloatValue) {
     return evalFloatInfixExpression(
       operator,
@@ -353,16 +348,52 @@ function evalInfixExpression(
       right
     );
   }
-  if (operator === '+') {
-    if (left instanceof StringValue || right instanceof StringValue) {
-      return new StringValue(left.inspect() + right.inspect());
+  if (left instanceof FloatValue && right instanceof IntegerValue) {
+    return evalFloatInfixExpression(
+      operator,
+      left,
+      new FloatValue(right.value)
+    );
+  }
+
+  if (left instanceof StringValue && right instanceof StringValue) {
+    switch (operator) {
+      case '+':
+        return new StringValue(left.value + right.value);
+      case '==':
+        return new BooleanValue(left.value === right.value);
+      case '!=':
+        return new BooleanValue(left.value !== right.value);
+      case '<':
+        return new BooleanValue(left.value < right.value);
+      case '<=':
+        return new BooleanValue(left.value <= right.value);
+      case '>':
+        return new BooleanValue(left.value > right.value);
+      case '>=':
+        return new BooleanValue(left.value >= right.value);
+      default:
+        return new ErrorValue(
+          `Type Mismatch: Unknown operator '${operator}' for strings ${left.type()} and ${right.type()}`
+        );
     }
   }
+
   if (operator === '==') {
-    return new BooleanValue(left.inspect() === right.inspect());
+    if (left.type() === right.type()) {
+      return new BooleanValue(left.inspect() === right.inspect());
+    }
+    return new ErrorValue(
+      `Type Mismatch: Cannot compare for equality ('==') between ${left.type()} and ${right.type()}`
+    );
   }
   if (operator === '!=') {
-    return new BooleanValue(left.inspect() !== right.inspect());
+    if (left.type() === right.type()) {
+      return new BooleanValue(left.inspect() !== right.inspect());
+    }
+    return new ErrorValue(
+      `Type Mismatch: Cannot compare for inequality ('!=') between ${left.type()} and ${right.type()}`
+    );
   }
 
   return new ErrorValue(

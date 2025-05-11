@@ -383,6 +383,8 @@ export class Parser {
         return this.parseDoWhileStatement();
       case TokenType.DISPLAY:
         return this.parseDisplayStatement();
+      case TokenType.LCURLY:
+        return this.parseBlockStatement();
       default:
         return this.parseExpressionStatement();
     }
@@ -663,7 +665,11 @@ export class Parser {
         const inferredTypeNode = this.inferTypeFromExpression(expression);
         if (
           inferredTypeNode &&
-          inferredTypeNode.value !== explicitTypeAnnotation.value
+          inferredTypeNode.value !== explicitTypeAnnotation.value &&
+          !(
+            explicitTypeAnnotation.value === 'float' &&
+            inferredTypeNode.value === 'int'
+          )
         ) {
           this.errors.push(
             `Type mismatch for variable '${name.value}' at line ${name.token.line}. ` +
@@ -687,10 +693,13 @@ export class Parser {
       if (explicitTypeAnnotation) {
         finalTypeAnnotationNode = explicitTypeAnnotation;
       } else {
-        this.errors.push(
-          `Variable '${name.value}' at line ${name.token.line} must have a type annotation or an initializer.`
-        );
-        return null;
+        const anyToken: Token = {
+          type: TokenType.IDENTIFIER,
+          literal: 'any',
+          line: name.token.line,
+          column: name.token.column,
+        };
+        finalTypeAnnotationNode = new TypeNode(anyToken, 'any');
       }
     }
 
