@@ -1,3 +1,7 @@
+import { Param } from '../ast/functions';
+import { BlockStatement } from '../ast/statements';
+import { Environment } from './environment';
+
 // Defines the type of a runtime object.
 export enum ObjectType {
   INTEGER = 'INTEGER',
@@ -92,15 +96,19 @@ export class ErrorValue implements RuntimeObject {
   }
 }
 
-// Represents a function at runtime.
 export class FunctionValue implements RuntimeObject {
-  // TODO: Define parameters and body based on AST nodes
-  // constructor(public parameters: any[], public body: any, public env: Environment) {}
+  constructor(
+    public params: Param[],
+    public body: BlockStatement,
+    public env: Environment
+  ) {}
+
   type(): ObjectType {
     return ObjectType.FUNCTION;
   }
+
   inspect(): string {
-    // TODO: Implement a proper inspection string for functions
-    return 'fn() { ... }';
+    const paramNames = this.params.map((p) => p.value).join(', ');
+    return `fn(${paramNames}) { ... }`;
   }
 }
