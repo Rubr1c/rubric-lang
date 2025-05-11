@@ -8,7 +8,12 @@ export enum TokenType {
   FLOAT = 'FLOAT',
   STRING = 'STRING',
   BOOLEAN = 'BOOLEAN',
-  VOID = 'VOID',
+  VOID = 'VOID', 
+  
+  STRING_ARR = 'STRING_ARR',
+  INT_ARR = 'INT_ARR',
+  FLOAT_ARR = 'FLOAT_ARR',
+  BOOLEAN_ARR = 'BOOLEAN_ARR',
 
   EQUALS = 'EQUALS',
   COLON = 'COLON',
