@@ -1,5 +1,7 @@
 
 
-var x = true;
-var y = true;
-x && y;
+fn add(x: int, y: int): int {
+    return x + y;
+}
+
+add(1, 2);

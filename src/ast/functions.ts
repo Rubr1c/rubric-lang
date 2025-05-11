@@ -38,7 +38,7 @@ export class FunctionLiteral implements Expression {
 export class FunctionDeclaration implements Statement {
   public token: Token;
   public name: Identifier;
-  public params: Identifier[];
+  public params: Param[];
   public returnType?: TypeNode;
   public body: BlockStatement;
 

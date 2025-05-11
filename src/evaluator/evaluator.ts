@@ -23,6 +23,7 @@ import {
   Expression,
   Node,
   AssignmentExpression,
+  FunctionDeclaration,
 } from '../ast';
 import {
   RuntimeObject,
@@ -91,6 +92,8 @@ export function evaluate(
       return evalFunctionLiteralNode(node, env);
     case node instanceof CallExpression:
       return evalCallExpressionNode(node, env);
+    case node instanceof FunctionDeclaration:
+      return evalFunctionDeclarationStatementNode(node, env);
     default:
       const nodeConstructorName =
         (node as any)?.constructor?.name || 'UnknownType';
@@ -449,28 +452,55 @@ function evalExpressions(
   exps: Expression[],
   env: Environment
 ): Array<RuntimeObject | null> {
-  return []; // Placeholder
+  const results: Array<RuntimeObject | null> = [];
+  for (const exp of exps) {
+    const evaluated = evaluate(exp, env);
+    results.push(evaluated);
+  }
+  return results;
 }
 
-// Applies a function.
+// applies a function
 function applyFunction(
-  fn: RuntimeObject,
+  fnObj: RuntimeObject,
   args: Array<RuntimeObject | null>
 ): RuntimeObject {
-  return new NullValue(); // Placeholder
-}
+  if (!(fnObj instanceof FunctionValue)) {
+    return new ErrorValue(`Cannot apply non-function type: ${fnObj.type()}`);
+  }
 
-// Extends the function environment.
-function extendFunctionEnv(
-  fn: FunctionValue,
-  args: Array<RuntimeObject | null>
-): Environment {
-  return new Environment(); // Placeholder
+  const func = fnObj as FunctionValue;
+
+  if (func.params.length !== args.length) {
+    return new ErrorValue(
+      `Expected ${func.params.length} arguments but got ${args.length}`
+    );
+  }
+
+  const functionEnv = new Environment(func.env);
+
+  for (let i = 0; i < func.params.length; i++) {
+    const paramName = func.params[i].value;
+    const argValue = args[i] === null ? new NullValue() : args[i]!;
+    const defineResult = functionEnv.define(paramName, argValue, false);
+    if (defineResult instanceof ErrorValue) {
+      return defineResult;
+    }
+  }
+
+  const evaluatedBody = evaluate(func.body, functionEnv);
+
+  const unwrappedResult = unwrapReturnValue(evaluatedBody);
+
+  return unwrappedResult === null ? new NullValue() : unwrappedResult;
 }
 
 // Unwraps a return value.
 function unwrapReturnValue(obj: RuntimeObject | null): RuntimeObject | null {
-  return null; // Placeholder
+  if (obj instanceof ReturnValue) {
+    return obj.value;
+  }
+  return obj;
 }
 
 // Evaluates a var statement.
@@ -771,4 +801,23 @@ function evalCallExpressionNode(
     return firstErrorArg as ErrorValue;
   }
   return applyFunction(funcToCall, evaluatedArgs);
+}
+
+// Evaluates a function declaration statement.
+function evalFunctionDeclarationStatementNode(
+  node: FunctionDeclaration,
+  env: Environment
+): RuntimeObject | null {
+  const funcName = node.name.value;
+  const funcValue = new FunctionValue(node.params, node.body, env); // env is captured here
+
+  // Define the function in the current environment.
+  // Functions declared this way are typically constant bindings.
+  const defineResult = env.define(funcName, funcValue, true);
+
+  if (defineResult instanceof ErrorValue) {
+    return defineResult; // Propagate re-declaration error or other define errors
+  }
+
+  return new NullValue(); // Function declarations don't evaluate to a value themselves
 }
