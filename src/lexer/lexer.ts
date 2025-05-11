@@ -131,6 +131,12 @@ export class Lexer {
       case '}':
         token = this.createToken(TokenType.RCURLY);
         break;
+      case '[':
+        token = this.createToken(TokenType.LBRACE);
+        break;
+      case ']':
+        token = this.createToken(TokenType.RBRACE);
+        break;
       case ',':
         token = this.createToken(TokenType.COMMA);
         break;
@@ -298,12 +304,48 @@ export class Lexer {
       case 'fn':
         return TokenType.FUNCTION;
       case 'string':
+        this.skipWhitespaceAndComments();
+        if (this.char === '[') {
+          if (this.peekChar() === ']') {
+            this.readChar();
+            this.readChar();
+            return TokenType.TYPE_STRING_ARR;
+          }
+          return TokenType.ILLEGAL;
+        }
         return TokenType.TYPE_STRING;
       case 'bool':
+        this.skipWhitespaceAndComments();
+        if (this.char === '[') {
+          if (this.peekChar() === ']') {
+            this.readChar();
+            this.readChar();
+            return TokenType.TYPE_BOOLEAN_ARR;
+          }
+          return TokenType.ILLEGAL;
+        }
         return TokenType.TYPE_BOOLEAN;
       case 'int':
+        this.skipWhitespaceAndComments();
+        if (this.char === '[') {
+          if (this.peekChar() === ']') {
+            this.readChar();
+            this.readChar();
+            return TokenType.TYPE_INT_ARR;
+          }
+          return TokenType.ILLEGAL;
+        }
         return TokenType.TYPE_INT;
       case 'float':
+        this.skipWhitespaceAndComments();
+        if (this.char === '[') {
+          if (this.peekChar() === ']') {
+            this.readChar();
+            this.readChar();
+            return TokenType.TYPE_FLOAT_ARR;
+          }
+          return TokenType.ILLEGAL;
+        }
         return TokenType.TYPE_FLOAT;
       case 'void':
         return TokenType.TYPE_VOID;

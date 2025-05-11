@@ -5,6 +5,7 @@ import { Lexer } from './lexer/lexer';
 import { Parser } from './parser/parser';
 import { evaluate } from './evaluator/evaluator';
 import { Environment } from './evaluator/environment';
+import { Token, TokenType } from './lexer/tokens';
 
 const main = () => {
   // process.argv contains command line arguments.
@@ -26,16 +27,27 @@ const main = () => {
     const sourceCode = fs.readFileSync(resolvedFilePath, 'utf-8');
 
     const lexer = new Lexer(sourceCode);
-    const parser = new Parser(lexer);
-    const program = parser.parseProgram();
-    // Print parser errors if any
-    if (parser.errors.length > 0) {
-      console.error('Parser errors:');
-      parser.errors.forEach((err) => console.error(err));
-    } else {
-      const env = new Environment();
-      evaluate(program, env);
-    }
+    let token: Token;
+    do {
+      token = lexer.nextToken();
+      console.log(
+        `Type: ${token.type.padEnd(15)}, Literal: "${token.literal
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r')}", Line: ${token.line}, Col: ${token.column}`
+      );
+    } while (token.type !== TokenType.EOF);
+    console.log('--------------\n');
+
+    // const parser = new Parser(lexer);
+    // const program = parser.parseProgram();
+    // // Print parser errors if any
+    // if (parser.errors.length > 0) {
+    //   console.error('Parser errors:');
+    //   parser.errors.forEach((err) => console.error(err));
+    // } else {
+    //   const env = new Environment();
+    //   evaluate(program, env);
+    // }
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.error(`Error: File not found at ${resolvedFilePath}`);
