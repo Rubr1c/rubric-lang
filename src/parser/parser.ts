@@ -138,6 +138,8 @@ export class Parser {
       TokenType.GT_EQUALS,
       this.parseInfixExpression.bind(this)
     );
+    this.registerInfix(TokenType.AND, this.parseInfixExpression.bind(this));
+    this.registerInfix(TokenType.OR, this.parseInfixExpression.bind(this));
     this.registerInfix(TokenType.LPAREN, this.parseCallExpression.bind(this));
     this.registerInfix(
       TokenType.QUESTION_MARK,

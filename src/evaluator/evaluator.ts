@@ -626,7 +626,6 @@ function evalPrefixExpressionNode(
         'Operand for prefix expression unexpectedly evaluated to null by main evaluate.'
       );
     }
-    // Call the existing helper for non-side-effecting prefix ops
     return evalPrefixExpression(node.operator, prefixRightOperand);
   }
 }
@@ -639,13 +638,52 @@ function evalInfixExpressionNode(
   if (left instanceof ErrorValue) {
     return left;
   }
-  // TODO: Implement short-circuiting for '&&' and '||' here if desired
-  // For &&: if left is falsy, return left (or its JS boolean equivalent wrapped in BooleanValue)
-  // For ||: if left is truthy, return left (or its JS boolean equivalent wrapped in BooleanValue)
+  if (left === null) {
+    return new ErrorValue(
+      'Left operand of infix expression evaluated to unexpected null.'
+    );
+  }
+
+  if (node.operator === '&&') {
+    if (!isTruthy(left)) {
+      return new BooleanValue(false);
+    }
+    const right = evaluate(node.right, env);
+    if (right instanceof ErrorValue) {
+      return right;
+    }
+    if (right === null) {
+      return new ErrorValue(
+        "Right operand of '&&' evaluated to unexpected null."
+      );
+    }
+    return new BooleanValue(isTruthy(right));
+  }
+
+  if (node.operator === '||') {
+    if (isTruthy(left)) {
+      return new BooleanValue(true);
+    }
+    const right = evaluate(node.right, env);
+    if (right instanceof ErrorValue) {
+      return right;
+    }
+    if (right === null) {
+      return new ErrorValue(
+        "Right operand of '||' evaluated to unexpected null."
+      );
+    }
+    return new BooleanValue(isTruthy(right));
+  }
 
   const right = evaluate(node.right, env);
   if (right instanceof ErrorValue) {
     return right;
+  }
+  if (right === null) {
+    return new ErrorValue(
+      'Right operand of infix expression evaluated to unexpected null.'
+    );
   }
 
   return evalInfixExpression(node.operator, left, right);
@@ -727,11 +765,10 @@ function evalCallExpressionNode(
     return new ErrorValue(`Cannot call non-function type: ${typeStr}`);
   }
 
-  const evaluatedArgs = evalExpressions(node.args, env); // Assumes evalExpressions exists and works
+  const evaluatedArgs = evalExpressions(node.args, env);
   const firstErrorArg = evaluatedArgs.find((arg) => arg instanceof ErrorValue);
   if (firstErrorArg) {
     return firstErrorArg as ErrorValue;
   }
-  // applyFunction needs to be robust to handle funcToCall here which is FunctionValue
-  return applyFunction(funcToCall, evaluatedArgs); // Assumes applyFunction exists
+  return applyFunction(funcToCall, evaluatedArgs);
 }
