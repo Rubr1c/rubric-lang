@@ -680,6 +680,81 @@ describe('Evaluator', () => {
     });
   });
 
+  describe('Ternary Expressions', () => {
+    it('should evaluate basic ternary operations', () => {
+      const tests = [
+        { input: 'true ? 1 : 2;', expected: 1, type: IntegerValue },
+        { input: 'false ? 1 : 2;', expected: 2, type: IntegerValue },
+        {
+          input: '(1 < 2) ? "yes" : "no";',
+          expected: 'yes',
+          type: StringValue,
+        },
+        { input: '(1 > 2) ? "yes" : "no";', expected: 'no', type: StringValue },
+        { input: '0 ? 100 : 200;', expected: 200, type: IntegerValue }, // 0 is falsy
+        { input: '1 ? 100 : 200;', expected: 100, type: IntegerValue }, // 1 is truthy
+        { input: '"" ? true : false;', expected: false, type: BooleanValue }, // "" is falsy
+        { input: '"hi" ? true : false;', expected: true, type: BooleanValue }, // "hi" is truthy
+      ];
+
+      tests.forEach((tt) => {
+        const evaluated = testEvaluate(tt.input);
+        expect(evaluated).toBeInstanceOf(tt.type);
+        if (evaluated instanceof IntegerValue)
+          expect(evaluated.value).toEqual(tt.expected);
+        if (evaluated instanceof StringValue)
+          expect(evaluated.value).toEqual(tt.expected);
+        if (evaluated instanceof BooleanValue)
+          expect(evaluated.value).toEqual(tt.expected);
+      });
+    });
+
+    it('should evaluate nested ternary operations', () => {
+      const tests = [
+        {
+          input: 'true ? (false ? 1 : 2) : 3;',
+          expected: 2,
+          type: IntegerValue,
+        },
+        {
+          input: 'false ? 1 : (true ? 2 : 3);',
+          expected: 2,
+          type: IntegerValue,
+        },
+        {
+          input: '(1 < 0) ? "a" : ((2 > 1) ? "b" : "c");',
+          expected: 'b',
+          type: StringValue,
+        },
+      ];
+      tests.forEach((tt) => {
+        const evaluated = testEvaluate(tt.input);
+        expect(evaluated).toBeInstanceOf(tt.type);
+        if (evaluated instanceof IntegerValue)
+          expect(evaluated.value).toEqual(tt.expected);
+        if (evaluated instanceof StringValue)
+          expect(evaluated.value).toEqual(tt.expected);
+      });
+    });
+
+    it('should propagate errors from ternary expressions', () => {
+      const tests = [
+        { input: '(1/0) ? 1 : 2;', expectedError: 'Division by zero.' },
+        { input: 'true ? (1/0) : 2;', expectedError: 'Division by zero.' },
+        { input: 'false ? 1 : (1/0);', expectedError: 'Division by zero.' },
+        {
+          input: 'undefinedVar ? 1 : 2;',
+          expectedError: 'identifier not found: undefinedVar',
+        },
+      ];
+      tests.forEach((tt) => {
+        const evaluated = testEvaluate(tt.input);
+        expect(evaluated).toBeInstanceOf(ErrorValue);
+        expect((evaluated as ErrorValue).message).toEqual(tt.expectedError);
+      });
+    });
+  });
+
   describe('Function Evaluation', () => {
     it('should evaluate function literals and calls', () => {
       const tests = [
@@ -723,7 +798,6 @@ describe('Evaluator', () => {
       expect((evaluated as IntegerValue).value).toEqual(42);
     });
 
-
     it('should support basic recursion', () => {
       const input = `
         fn factorial(n: int): int {
@@ -739,7 +813,6 @@ describe('Evaluator', () => {
       expect(evaluated).toBeInstanceOf(IntegerValue);
       expect((evaluated as IntegerValue).value).toEqual(120);
     });
-
 
     describe('Function Call Error Handling', () => {
       it('should return error for wrong number of arguments', () => {
@@ -778,12 +851,11 @@ describe('Evaluator', () => {
             input: 'fn needsStr(s: string): void {} needsStr(true);',
             expectedMsg:
               "Type Error: Argument 1 ('s') for function 'needsStr' expected type 'string' but got type 'boolean'.",
-          }
+          },
         ];
         tests.forEach((tt) => {
-       
           let currentInput = tt.input;
-  
+
           const evaluated = testEvaluate(currentInput);
           expect(evaluated).toBeInstanceOf(ErrorValue);
           expect((evaluated as ErrorValue).message).toEqual(tt.expectedMsg);
@@ -791,8 +863,6 @@ describe('Evaluator', () => {
       });
 
       it('should return error when calling a non-function', () => {
-
-
         const adjustedTests = [
           {
             input: 'var x = 10; x();',

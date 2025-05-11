@@ -25,6 +25,7 @@ import {
   AssignmentExpression,
   FunctionDeclaration,
   DisplayStatement,
+  TernaryExpression,
 } from '../ast';
 import {
   RuntimeObject,
@@ -97,6 +98,8 @@ export function evaluate(
       return evalFunctionDeclarationStatementNode(node, env);
     case node instanceof DisplayStatement:
       return evalDisplayStatementNode(node, env);
+    case node instanceof TernaryExpression:
+      return evalTernaryExpressionNode(node, env);
     default:
       const nodeConstructorName =
         (node as any)?.constructor?.name || 'UnknownType';
@@ -951,4 +954,21 @@ function evalDisplayStatementNode(
   }
   console.log(outputs.join(' '));
   return new NullValue();
+}
+
+// Evaluates a ternary expression.
+function evalTernaryExpressionNode(
+  node: TernaryExpression,
+  env: Environment
+): RuntimeObject | null {
+  const condition = evaluate(node.condition, env);
+  if (condition instanceof ErrorValue) {
+    return condition;
+  }
+
+  if (isTruthy(condition)) {
+    return evaluate(node.consequent, env);
+  } else {
+    return evaluate(node.alternate, env);
+  }
 }

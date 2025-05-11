@@ -2,6 +2,6 @@
 
 
 
-var x: int = 1 > 2 ? 5 : 6;
+var x: int = 1 < 2 ? 5 : 6;
 
 display(x);
