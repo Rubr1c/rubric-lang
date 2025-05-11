@@ -6,8 +6,6 @@ import { Parser } from './parser/parser';
 import { evaluate } from './evaluator/evaluator';
 import { Environment } from './evaluator/environment';
 
-console.log('Rubric Lang Interpreter - Demo Run');
-
 const main = () => {
   // process.argv contains command line arguments.
   // process.argv[0] is usually the path to node executable.
