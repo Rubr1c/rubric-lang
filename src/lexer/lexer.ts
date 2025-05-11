@@ -306,7 +306,7 @@ export class Lexer {
       case 'float':
         return TokenType.TYPE_FLOAT;
       case 'void':
-        return TokenType.TYPE_VOID
+        return TokenType.TYPE_VOID;
       case 'if':
         return TokenType.IF_STATEMENT;
       case 'else':
@@ -319,6 +319,8 @@ export class Lexer {
         return TokenType.DO_STATEMENT;
       case 'return':
         return TokenType.RETURN_STATEMENT;
+      case 'display':
+        return TokenType.DISPLAY;
       case 'true':
       case 'false':
         return TokenType.BOOLEAN;

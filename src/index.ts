@@ -43,19 +43,8 @@ const main = () => {
       console.dir(program, { depth: null });
       console.log('-----------');
 
-      // --- Evaluation Start ---
-      console.log('\n--- Evaluation ---');
       const env = new Environment();
-      const evaluated = evaluate(program, env);
-
-      if (evaluated) {
-        console.log('Result:');
-        console.log(evaluated.inspect());
-      } else {
-        console.log('Evaluation returned no result (null).');
-      }
-      console.log('------------------');
-      // --- Evaluation End ---
+      evaluate(program, env);
     }
   } catch (error: any) {
     if (error.code === 'ENOENT') {

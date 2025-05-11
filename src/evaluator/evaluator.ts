@@ -24,6 +24,7 @@ import {
   Node,
   AssignmentExpression,
   FunctionDeclaration,
+  DisplayStatement,
 } from '../ast';
 import {
   RuntimeObject,
@@ -94,6 +95,8 @@ export function evaluate(
       return evalCallExpressionNode(node, env);
     case node instanceof FunctionDeclaration:
       return evalFunctionDeclarationStatementNode(node, env);
+    case node instanceof DisplayStatement:
+      return evalDisplayStatementNode(node, env);
     default:
       const nodeConstructorName =
         (node as any)?.constructor?.name || 'UnknownType';
@@ -899,5 +902,22 @@ function evalFunctionDeclarationStatementNode(
     return defineResult;
   }
 
+  return new NullValue();
+}
+
+// Evaluates a display statement.
+function evalDisplayStatementNode(
+  node: DisplayStatement,
+  env: Environment
+): RuntimeObject | null {
+  const outputs: string[] = [];
+  for (const argExp of node.args) {
+    const evaluatedArg = evaluate(argExp, env);
+    if (evaluatedArg instanceof ErrorValue) {
+      return evaluatedArg;
+    }
+    outputs.push(evaluatedArg === null ? 'null' : evaluatedArg.inspect());
+  }
+  console.log(outputs.join(' '));
   return new NullValue();
 }

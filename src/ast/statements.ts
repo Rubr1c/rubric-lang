@@ -230,3 +230,23 @@ export class ExpressionStatement implements Statement {
     return this.expression.toString();
   }
 }
+
+// Represents a display statement (e.g., display("Hello", varName);)
+export class DisplayStatement implements Statement {
+  public token: Token;
+  public args: Expression[];
+
+  constructor(token: Token, args: Expression[]) {
+    this.token = token;
+    this.args = args;
+  }
+
+  tokenLiteral(): string {
+    return this.token.literal;
+  }
+
+  toString(): string {
+    const argStrings = this.args.map((arg) => arg.toString()).join(', ');
+    return `${this.tokenLiteral()}(${argStrings});`;
+  }
+}

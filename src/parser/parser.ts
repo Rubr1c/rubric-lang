@@ -28,6 +28,7 @@ import {
   WhileStatement,
   DoWhileStatement,
   FunctionLiteral,
+  DisplayStatement,
 } from '../ast';
 
 export enum Precedence {
@@ -380,6 +381,8 @@ export class Parser {
         return this.parseWhileStatement();
       case TokenType.DO_STATEMENT:
         return this.parseDoWhileStatement();
+      case TokenType.DISPLAY:
+        return this.parseDisplayStatement();
       default:
         return this.parseExpressionStatement();
     }
@@ -1026,5 +1029,52 @@ export class Parser {
     this.inFunction = wasInFunction;
 
     return new FunctionLiteral(funcToken, params, body, actualReturnTypeNode);
+  }
+
+  private parseDisplayStatement(): Statement | null {
+    const stmtToken = this.curToken; // Current token is DISPLAY
+
+    if (!this.expectPeek(TokenType.LPAREN)) {
+      this.errors.push(
+        `Expected '(' after display keyword at line ${stmtToken.line}`
+      );
+      return null;
+    }
+
+    const args: Expression[] = [];
+    if (!this.peekTokenIs(TokenType.RPAREN)) {
+      this.nextToken();
+      const firstArg = this.parseExpression(Precedence.LOWEST);
+      if (!firstArg) {
+        return null;
+      }
+      args.push(firstArg);
+
+      while (this.peekTokenIs(TokenType.COMMA)) {
+        this.nextToken();
+        this.nextToken();
+        const nextArg = this.parseExpression(Precedence.LOWEST);
+        if (!nextArg) {
+          return null;
+        }
+        args.push(nextArg);
+      }
+    }
+
+    if (!this.expectPeek(TokenType.RPAREN)) {
+      this.errors.push(
+        `Expected ')' after display arguments at line ${this.curToken.line}`
+      );
+      return null;
+    }
+
+    if (!this.expectPeek(TokenType.SEMICOLON)) {
+      this.errors.push(
+        `Expected ';' after display statement at line ${this.curToken.line}`
+      );
+      return null;
+    }
+
+    return new DisplayStatement(stmtToken, args);
   }
 }
