@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "rubric-lang": "./dist/index.js"
+    "rubric-lang": "dist/index.js"
   },
   "files": [
     "dist",
