@@ -1,19 +1,41 @@
 {
   "name": "rubric-lang",
   "version": "1.0.0",
+  "description": "A simple, interpreted programming language designed for learning and experimentation.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "rubric-lang": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "jest",
-    "demo": "ts-node src/index.ts demo.rl"
+    "demo": "npm run build && node dist/index.js demo.rl",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": [
+    "interpreter",
+    "parser",
+    "lexer",
+    "programming language",
+    "education",
+    "rubric"
+  ],
+  "author": "Your Name or Organization",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/rubric-lang.git"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.15",

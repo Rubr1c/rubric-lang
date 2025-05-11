@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import fs from 'fs';
 import path from 'path';
 import { Lexer } from './lexer/lexer';
@@ -23,13 +24,8 @@ const main = () => {
   // Resolve the path relative to the current working directory
   const resolvedFilePath = path.resolve(process.cwd(), filePathArg);
 
-  console.log(`Attempting to interpret: ${resolvedFilePath}`);
-
   try {
     const sourceCode = fs.readFileSync(resolvedFilePath, 'utf-8');
-    console.log('\n--- Source Code ---');
-    console.log(sourceCode);
-    console.log('-------------------\n');
 
     const lexer = new Lexer(sourceCode);
     const parser = new Parser(lexer);
@@ -39,10 +35,6 @@ const main = () => {
       console.error('Parser errors:');
       parser.errors.forEach((err) => console.error(err));
     } else {
-      console.log('--- AST ---');
-      console.dir(program, { depth: null });
-      console.log('-----------');
-
       const env = new Environment();
       evaluate(program, env);
     }
