@@ -926,9 +926,24 @@ export class Parser {
       typeName = 'boolean';
       tokenTypeForTypeNode = TokenType.TYPE_BOOLEAN;
       originalTokenForPos = expression.token;
+    } else if (expression instanceof PrefixExpression) {
+      const prefixExpr = expression as PrefixExpression;
+      if (
+        prefixExpr.operator === '-' ||
+        prefixExpr.operator === '++' ||
+        prefixExpr.operator === '--'
+      ) {
+        return this.inferTypeFromExpression(prefixExpr.right);
+      } else if (prefixExpr.operator === '!') {
+        typeName = 'boolean';
+        tokenTypeForTypeNode = TokenType.TYPE_BOOLEAN;
+        originalTokenForPos = prefixExpr.token; // Token of the '!'
+      } else {
+        return null;
+      }
     } else if (expression instanceof FunctionLiteral) {
       const funcLit = expression as FunctionLiteral;
-      const paramTypes = funcLit.params.map((p) => p.type);
+      const paramTypes = funcLit.params.map((p) => p.type.value);
       const returnTypeValue = funcLit.returnType!.value;
 
       const paramsString = paramTypes.length > 0 ? paramTypes.join(', ') : '';
