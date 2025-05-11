@@ -122,7 +122,181 @@ describe('Evaluator', () => {
       });
     });
 
-    // TODO: Add tests for prefix ++ and -- once their interaction with variables is more clearly defined for testing
+    it('should evaluate prefix ++ and -- operators', () => {
+      const tests = [
+        // Integer tests
+        {
+          setup: 'var a = 5; ++a;',
+          expectedExpressionValue: 6,
+          finalVariableValue: 6,
+          varName: 'a',
+          type: IntegerValue,
+        },
+        {
+          setup: 'var b = 0; ++b;',
+          expectedExpressionValue: 1,
+          finalVariableValue: 1,
+          varName: 'b',
+          type: IntegerValue,
+        },
+        {
+          setup: 'var c = -3; ++c;',
+          expectedExpressionValue: -2,
+          finalVariableValue: -2,
+          varName: 'c',
+          type: IntegerValue,
+        },
+        {
+          setup: 'var d = 5; --d;',
+          expectedExpressionValue: 4,
+          finalVariableValue: 4,
+          varName: 'd',
+          type: IntegerValue,
+        },
+        {
+          setup: 'var e = 0; --e;',
+          expectedExpressionValue: -1,
+          finalVariableValue: -1,
+          varName: 'e',
+          type: IntegerValue,
+        },
+        {
+          setup: 'var f = -3; --f;',
+          expectedExpressionValue: -4,
+          finalVariableValue: -4,
+          varName: 'f',
+          type: IntegerValue,
+        },
+
+        // Float tests
+        {
+          setup: 'var g = 5.0; ++g;',
+          expectedExpressionValue: 6.0,
+          finalVariableValue: 6.0,
+          varName: 'g',
+          type: FloatValue,
+        },
+        {
+          setup: 'var h = 0.5; ++h;',
+          expectedExpressionValue: 1.5,
+          finalVariableValue: 1.5,
+          varName: 'h',
+          type: FloatValue,
+        },
+        {
+          setup: 'var i = -2.5; ++i;',
+          expectedExpressionValue: -1.5,
+          finalVariableValue: -1.5,
+          varName: 'i',
+          type: FloatValue,
+        },
+        {
+          setup: 'var j = 5.0; --j;',
+          expectedExpressionValue: 4.0,
+          finalVariableValue: 4.0,
+          varName: 'j',
+          type: FloatValue,
+        },
+        {
+          setup: 'var k = 0.5; --k;',
+          expectedExpressionValue: -0.5,
+          finalVariableValue: -0.5,
+          varName: 'k',
+          type: FloatValue,
+        },
+        {
+          setup: 'var l = -2.5; --l;',
+          expectedExpressionValue: -3.5,
+          finalVariableValue: -3.5,
+          varName: 'l',
+          type: FloatValue,
+        },
+      ];
+
+      tests.forEach((tt) => {
+        const lexer = new Lexer(tt.setup);
+        const parser = new Parser(lexer);
+        const program = parser.parseProgram();
+        const env = new Environment();
+
+        if (parser.errors.length > 0) {
+          throw new Error(
+            `Parser errors for input "${tt.setup}": \n${parser.errors.join(
+              '\n'
+            )}`
+          );
+        }
+
+        // evaluate the program (var declaration and then the prefix expression)
+        const expressionResult = evaluate(program, env);
+
+        // Check the value of the prefix expression itself
+        expect(expressionResult).toBeInstanceOf(tt.type);
+        if (
+          expressionResult instanceof IntegerValue ||
+          expressionResult instanceof FloatValue
+        ) {
+          if (tt.type === FloatValue) {
+            expect(expressionResult.value).toBeCloseTo(
+              tt.expectedExpressionValue
+            );
+          } else {
+            expect(expressionResult.value).toEqual(tt.expectedExpressionValue);
+          }
+        }
+
+        // Check the variable's value in the environment after the operation
+        const varInEnv = env.get(tt.varName);
+        expect(varInEnv).toBeInstanceOf(tt.type);
+        if (
+          varInEnv instanceof IntegerValue ||
+          varInEnv instanceof FloatValue
+        ) {
+          if (tt.type === FloatValue) {
+            expect(varInEnv.value).toBeCloseTo(tt.finalVariableValue);
+          } else {
+            expect(varInEnv.value).toEqual(tt.finalVariableValue);
+          }
+        }
+      });
+    });
+
+    it('should return error for prefix ++/-- on undefined identifier', () => {
+      const tests = [
+        {
+          input: '++undefinedVar;',
+          errorMessage: 'identifier not found: undefinedVar',
+        },
+        {
+          input: '--anotherUndefined;',
+          errorMessage: 'identifier not found: anotherUndefined',
+        },
+      ];
+      tests.forEach((tt) => {
+        const evaluated = testEvaluate(tt.input);
+        expect(evaluated).toBeInstanceOf(ErrorValue);
+        expect((evaluated as ErrorValue).message).toEqual(tt.errorMessage);
+      });
+    });
+
+    it('should return error for prefix ++/-- on non-numeric types', () => {
+      const tests = [
+        {
+          input: 'var s = "str"; ++s;',
+          errorMessage: "Type Error: Cannot apply operator '++' to type STRING",
+        },
+        {
+          input: 'var b = true; --b;',
+          errorMessage:
+            "Type Error: Cannot apply operator '--' to type BOOLEAN",
+        },
+      ];
+      tests.forEach((tt) => {
+        const evaluated = testEvaluate(tt.input);
+        expect(evaluated).toBeInstanceOf(ErrorValue);
+        expect((evaluated as ErrorValue).message).toEqual(tt.errorMessage);
+      });
+    });
   });
 
   describe('Infix Expressions', () => {
@@ -506,5 +680,140 @@ describe('Evaluator', () => {
     });
   });
 
-  // More to come: Loops, Functions, Display, Errors
+  describe('Function Evaluation', () => {
+    it('should evaluate function literals and calls', () => {
+      const tests = [
+        {
+          input: 'var identity = fn(x: int): int { return x; }; identity(5);',
+          expected: 5,
+          type: IntegerValue,
+        },
+        {
+          input:
+            'var add = fn(x: int, y: int): int { return x + y; }; add(5, 10);',
+          expected: 15,
+          type: IntegerValue,
+        },
+        {
+          input:
+            'var sub = fn(a: float, b: float): float { return a - b; }; sub(5.5, 0.5);',
+          expected: 5.0,
+          type: FloatValue,
+        },
+      ];
+      tests.forEach((tt) => {
+        const evaluated = testEvaluate(tt.input);
+        expect(evaluated).toBeInstanceOf(tt.type);
+        if (evaluated instanceof IntegerValue)
+          expect(evaluated.value).toEqual(tt.expected);
+        if (evaluated instanceof FloatValue)
+          expect(evaluated.value).toBeCloseTo(tt.expected as number);
+      });
+    });
+
+    it('should evaluate function declarations and calls', () => {
+      const input = `
+        fn multiply(a: int, b: int): int {
+          return a * b;
+        }
+        multiply(6, 7);
+      `;
+      const evaluated = testEvaluate(input);
+      expect(evaluated).toBeInstanceOf(IntegerValue);
+      expect((evaluated as IntegerValue).value).toEqual(42);
+    });
+
+
+    it('should support basic recursion', () => {
+      const input = `
+        fn factorial(n: int): int {
+          if (n == 0) {
+            return 1;
+          } else {
+            return n * factorial(n - 1);
+          }
+        }
+        factorial(5);
+      `;
+      const evaluated = testEvaluate(input);
+      expect(evaluated).toBeInstanceOf(IntegerValue);
+      expect((evaluated as IntegerValue).value).toEqual(120);
+    });
+
+
+    describe('Function Call Error Handling', () => {
+      it('should return error for wrong number of arguments', () => {
+        const tests = [
+          {
+            input: 'fn twoParams(a: int, b: int): void {} twoParams(1);',
+            expectedMsg:
+              "Expected 2 arguments for function 'twoParams' but got 1",
+          },
+          {
+            input: 'fn noParams(): void {} noParams(1, 2);',
+            expectedMsg:
+              "Expected 0 arguments for function 'noParams' but got 2",
+          },
+        ];
+        tests.forEach((tt) => {
+          const evaluated = testEvaluate(tt.input);
+          expect(evaluated).toBeInstanceOf(ErrorValue);
+          expect((evaluated as ErrorValue).message).toEqual(tt.expectedMsg);
+        });
+      });
+
+      it('should return error for argument type mismatch', () => {
+        const tests = [
+          {
+            input: 'fn needsInt(i: int): void {} needsInt("str");',
+            expectedMsg:
+              "Type Error: Argument 1 ('i') for function 'needsInt' expected type 'int' but got type 'string'.",
+          },
+          {
+            input: 'fn needsBool(b: boolean): void {} needsBool(123);',
+            expectedMsg:
+              "Type Error: Argument 1 ('b') for function 'needsBool' expected type 'boolean' but got type 'int'.",
+          },
+          {
+            input: 'fn needsStr(s: string): void {} needsStr(true);',
+            expectedMsg:
+              "Type Error: Argument 1 ('s') for function 'needsStr' expected type 'string' but got type 'boolean'.",
+          }
+        ];
+        tests.forEach((tt) => {
+       
+          let currentInput = tt.input;
+  
+          const evaluated = testEvaluate(currentInput);
+          expect(evaluated).toBeInstanceOf(ErrorValue);
+          expect((evaluated as ErrorValue).message).toEqual(tt.expectedMsg);
+        });
+      });
+
+      it('should return error when calling a non-function', () => {
+
+
+        const adjustedTests = [
+          {
+            input: 'var x = 10; x();',
+            expectedMsg: 'Cannot call non-function type: INTEGER',
+          },
+          {
+            input: 'var s = "text"; s();',
+            expectedMsg: 'Cannot call non-function type: STRING',
+          },
+          {
+            input: 'var b = true; b();',
+            expectedMsg: 'Cannot call non-function type: BOOLEAN',
+          },
+        ];
+
+        adjustedTests.forEach((tt) => {
+          const evaluated = testEvaluate(tt.input);
+          expect(evaluated).toBeInstanceOf(ErrorValue);
+          expect((evaluated as ErrorValue).message).toEqual(tt.expectedMsg);
+        });
+      });
+    });
+  });
 });
