@@ -1,5 +1,5 @@
 
-var doSomething = fn(a: int, b: float) { a = a + 1; };
 
-
-
+var x = 2;
+var y = 3;
+x++ + y;

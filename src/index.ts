@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { Lexer } from './lexer/lexer';
 import { Parser } from './parser/parser';
+import { evaluate } from './evaluator/evaluator';
+import { Environment } from './evaluator/environment';
 
 console.log('Rubric Lang Interpreter - Demo Run');
 
@@ -39,6 +41,21 @@ const main = () => {
     } else {
       console.log('--- AST ---');
       console.dir(program, { depth: null });
+      console.log('-----------');
+
+      // --- Evaluation Start ---
+      console.log('\n--- Evaluation ---');
+      const env = new Environment();
+      const evaluated = evaluate(program, env);
+
+      if (evaluated) {
+        console.log('Result:');
+        console.log(evaluated.inspect());
+      } else {
+        console.log('Evaluation returned no result (null).');
+      }
+      console.log('------------------');
+      // --- Evaluation End ---
     }
   } catch (error: any) {
     if (error.code === 'ENOENT') {

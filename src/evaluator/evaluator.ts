@@ -8,6 +8,7 @@ import {
   StringLiteral,
   PrefixExpression,
   InfixExpression,
+  PostfixExpression,
   BlockStatement,
   IfStatement,
   ForStatement,
@@ -21,6 +22,7 @@ import {
   ReturnStatement,
   Expression,
   Node,
+  AssignmentExpression,
 } from '../ast';
 import {
   RuntimeObject,
@@ -35,6 +37,7 @@ import {
   FunctionValue,
 } from './objects';
 import { Environment } from './environment';
+import { isTruthy } from './utils';
 
 // Evaluates an AST node and returns a runtime object.
 export function evaluate(
@@ -42,14 +45,14 @@ export function evaluate(
   env: Environment
 ): RuntimeObject | null {
   if (node === null) {
-    return new NullValue(); // Explicitly return NullValue for null AST nodes
+    return new NullValue();
   }
 
   switch (true) {
     case node instanceof Program:
       return evalProgram(node, env);
     case node instanceof ExpressionStatement:
-      return evaluate(node.expression, env);
+      return evalExpressionStatementNode(node, env);
     case node instanceof BlockStatement:
       return evalBlockStatement(node, env);
     case node instanceof IfStatement:
@@ -65,37 +68,15 @@ export function evaluate(
     case node instanceof ConstStatement:
       return evalConstStatement(node, env);
     case node instanceof ReturnStatement:
-      const val = evaluate(node.returnValue, env);
-      if (val instanceof ErrorValue) {
-        return val;
-      }
-      return new ReturnValue(val === null ? new NullValue() : val);
+      return evalReturnStatementNode(node, env);
+    case node instanceof AssignmentExpression:
+      return evalAssignmentExpressionNode(node, env);
     case node instanceof PrefixExpression:
-      const prefixRight = evaluate(node.right, env);
-      if (prefixRight instanceof ErrorValue) {
-        return prefixRight;
-      }
-      if (prefixRight === null) {
-        return new ErrorValue(
-          'Operand for prefix expression evaluated to null.'
-        );
-      }
-      return evalPrefixExpression(node.operator, prefixRight);
+      return evalPrefixExpressionNode(node, env);
     case node instanceof InfixExpression:
-      const infixLeft = evaluate(node.left, env);
-      if (infixLeft instanceof ErrorValue) {
-        return infixLeft;
-      }
-      const infixRight = evaluate(node.right, env);
-      if (infixRight instanceof ErrorValue) {
-        return infixRight;
-      }
-      if (infixLeft === null || infixRight === null) {
-        return new ErrorValue(
-          'Operand for infix expression evaluated to null.'
-        );
-      }
-      return evalInfixExpression(node.operator, infixLeft, infixRight);
+      return evalInfixExpressionNode(node, env);
+    case node instanceof PostfixExpression:
+      return evalPostfixExpressionNode(node, env);
     case node instanceof Identifier:
       return evalIdentifier(node, env);
     case node instanceof IntegerLiteral:
@@ -107,26 +88,9 @@ export function evaluate(
     case node instanceof StringLiteral:
       return new StringValue(node.value);
     case node instanceof FunctionLiteral:
-      return new FunctionValue(node.params, node.body, env);
+      return evalFunctionLiteralNode(node, env);
     case node instanceof CallExpression:
-      const funcToCall = evaluate(node.func, env);
-      if (funcToCall instanceof ErrorValue) {
-        return funcToCall;
-      }
-      if (funcToCall === null || !(funcToCall instanceof FunctionValue)) {
-        const typeStr = funcToCall === null ? 'null' : funcToCall.type();
-        return new ErrorValue(`Cannot call non-function type: ${typeStr}`);
-      }
-
-      const evaluatedArgs = evalExpressions(node.args, env);
-      const firstErrorArg = evaluatedArgs.find(
-        (arg) => arg instanceof ErrorValue
-      );
-      if (firstErrorArg) {
-        return firstErrorArg as ErrorValue;
-      }
-
-      return applyFunction(funcToCall, evaluatedArgs);
+      return evalCallExpressionNode(node, env);
     default:
       const nodeConstructorName =
         (node as any)?.constructor?.name || 'UnknownType';
@@ -137,16 +101,49 @@ export function evaluate(
 }
 
 // Evaluates a program node.
-function evalProgram(program: Program, env: Environment): RuntimeObject | null {
-  return null; // Placeholder
+function evalProgram(program: Program, env: Environment): RuntimeObject {
+  let lastResult: RuntimeObject = new NullValue();
+
+  for (const statement of program.statements) {
+    const currentStatementResult = evaluate(statement, env);
+
+    if (currentStatementResult instanceof ErrorValue) {
+      return currentStatementResult;
+    }
+
+    if (currentStatementResult instanceof ReturnValue) {
+      return currentStatementResult;
+    }
+
+    lastResult = currentStatementResult ?? new NullValue();
+  }
+  return lastResult;
 }
 
 // Evaluates a block statement.
 function evalBlockStatement(
   block: BlockStatement,
-  env: Environment
+  outerEnv: Environment
 ): RuntimeObject | null {
-  return null; // Placeholder
+  const blockEnv = new Environment(outerEnv);
+
+  let lastResult = new NullValue();
+
+  for (const statement of block.statements) {
+    const currentStatementResult = evaluate(statement, blockEnv);
+
+    if (currentStatementResult instanceof ErrorValue) {
+      return currentStatementResult;
+    }
+
+    if (currentStatementResult instanceof ReturnValue) {
+      return currentStatementResult;
+    }
+
+    lastResult = currentStatementResult ?? new NullValue();
+  }
+
+  return lastResult;
 }
 
 // Evaluates an if statement.
@@ -154,7 +151,19 @@ function evalIfStatement(
   is: IfStatement,
   env: Environment
 ): RuntimeObject | null {
-  return null; // Placeholder
+  const conditionResult = evaluate(is.condition, env);
+
+  if (conditionResult instanceof ErrorValue) {
+    return conditionResult;
+  }
+
+  if (isTruthy(conditionResult)) {
+    return evaluate(is.consequence, env);
+  } else if (is.alternative) {
+    return evaluate(is.alternative, env);
+  }
+
+  return new NullValue();
 }
 
 // Evaluates a for statement.
@@ -162,7 +171,50 @@ function evalForStatement(
   fs: ForStatement,
   env: Environment
 ): RuntimeObject | null {
-  return null; // Placeholder
+  const loopEnv = new Environment(env);
+
+  // 1. INITIALIZER
+  if (fs.init) {
+    const initResult = evaluate(fs.init, loopEnv);
+    if (initResult instanceof ErrorValue) {
+      return initResult;
+    }
+  }
+
+  while (true) {
+    let conditionIsTrue = true;
+    if (fs.condition) {
+      const conditionEvalResult = evaluate(fs.condition, loopEnv);
+      if (conditionEvalResult instanceof ErrorValue) {
+        return conditionEvalResult;
+      }
+      if (!isTruthy(conditionEvalResult)) {
+        conditionIsTrue = false;
+      }
+    }
+
+    if (!conditionIsTrue) {
+      break;
+    }
+
+    const bodyResult = evaluate(fs.body, loopEnv);
+
+    if (bodyResult instanceof ErrorValue) {
+      return bodyResult;
+    }
+    if (bodyResult instanceof ReturnValue) {
+      return bodyResult;
+    }
+
+    if (fs.update) {
+      const updateResult = evaluate(fs.update, loopEnv);
+      if (updateResult instanceof ErrorValue) {
+        return updateResult;
+      }
+    }
+  }
+
+  return new NullValue();
 }
 
 // Evaluates a while statement.
@@ -170,7 +222,27 @@ function evalWhileStatement(
   ws: WhileStatement,
   env: Environment
 ): RuntimeObject | null {
-  return null; // Placeholder
+  while (true) {
+    const conditionResult = evaluate(ws.condition, env);
+
+    if (conditionResult instanceof ErrorValue) {
+      return conditionResult;
+    }
+
+    if (!isTruthy(conditionResult)) {
+      break;
+    }
+
+    const bodyResult = evaluate(ws.body, env);
+
+    if (bodyResult instanceof ErrorValue) {
+      return bodyResult;
+    }
+    if (bodyResult instanceof ReturnValue) {
+      return bodyResult;
+    }
+  }
+  return new NullValue();
 }
 
 // Evaluates a do...while statement.
@@ -178,12 +250,39 @@ function evalDoWhileStatement(
   dws: DoWhileStatement,
   env: Environment
 ): RuntimeObject | null {
-  return null; // Placeholder
+  while (true) {
+    const bodyResult = evaluate(dws.body, env);
+
+    if (bodyResult instanceof ErrorValue) {
+      return bodyResult;
+    }
+    if (bodyResult instanceof ReturnValue) {
+      return bodyResult;
+    }
+
+    const conditionResult = evaluate(dws.condition, env);
+
+    if (conditionResult instanceof ErrorValue) {
+      return conditionResult;
+    }
+
+    if (!isTruthy(conditionResult)) {
+      break;
+    }
+  }
+  return new NullValue();
 }
 
 // Evaluates an identifier.
 function evalIdentifier(node: Identifier, env: Environment): RuntimeObject {
-  return new ErrorValue('identifier not found: ' + node.value); // Placeholder
+  const identifierName = node.value;
+  const value = env.get(identifierName);
+
+  if (!value) {
+    return new ErrorValue(`identifier not found: ${identifierName}`);
+  }
+
+  return value;
 }
 
 // Evaluates a prefix expression.
@@ -191,16 +290,158 @@ function evalPrefixExpression(
   operator: string,
   right: RuntimeObject | null
 ): RuntimeObject {
-  return new NullValue(); // Placeholder
+  if (right === null) {
+    return new ErrorValue(
+      'Operand for prefix expression is unexpectedly null in helper function'
+    );
+  }
+
+  switch (operator) {
+    case '!':
+      return isTruthy(right) ? new BooleanValue(false) : new BooleanValue(true);
+    case '-':
+      if (right instanceof IntegerValue) {
+        return new IntegerValue(-right.value);
+      }
+      if (right instanceof FloatValue) {
+        return new FloatValue(-right.value);
+      }
+      return new ErrorValue(
+        `Type Error: Cannot apply operator '-' to type ${right.type()}`
+      );
+    default:
+      return new ErrorValue(
+        `Unknown or unhandled prefix operator in helper: ${operator}`
+      );
+  }
 }
 
-// Evaluates an infix expression.
 function evalInfixExpression(
   operator: string,
   left: RuntimeObject | null,
   right: RuntimeObject | null
 ): RuntimeObject {
-  return new NullValue(); // Placeholder
+  if (left === null || right === null) {
+    return new ErrorValue(
+      'Operands for infix expression are unexpectedly null in helper function'
+    );
+  }
+
+  if (left instanceof IntegerValue && right instanceof IntegerValue) {
+    return evalIntegerInfixExpression(operator, left, right);
+  }
+  if (left instanceof FloatValue && right instanceof FloatValue) {
+    return evalFloatInfixExpression(operator, left, right);
+  }
+  if (left instanceof FloatValue && right instanceof IntegerValue) {
+    return evalFloatInfixExpression(
+      operator,
+      left,
+      new FloatValue(right.value)
+    );
+  }
+  if (left instanceof IntegerValue && right instanceof FloatValue) {
+    return evalFloatInfixExpression(
+      operator,
+      new FloatValue(left.value),
+      right
+    );
+  }
+  if (operator === '+') {
+    if (left instanceof StringValue || right instanceof StringValue) {
+      return new StringValue(left.inspect() + right.inspect());
+    }
+  }
+  if (operator === '==') {
+    return new BooleanValue(left.inspect() === right.inspect());
+  }
+  if (operator === '!=') {
+    return new BooleanValue(left.inspect() !== right.inspect());
+  }
+
+  return new ErrorValue(
+    `Type Mismatch: Cannot apply operator '${operator}' between ${left.type()} and ${right.type()}`
+  );
+}
+
+function evalIntegerInfixExpression(
+  operator: string,
+  left: IntegerValue,
+  right: IntegerValue
+): RuntimeObject {
+  const leftVal = left.value;
+  const rightVal = right.value;
+
+  switch (operator) {
+    case '+':
+      return new IntegerValue(leftVal + rightVal);
+    case '-':
+      return new IntegerValue(leftVal - rightVal);
+    case '*':
+      return new IntegerValue(leftVal * rightVal);
+    case '/':
+      if (rightVal === 0) {
+        return new ErrorValue('Division by zero.');
+      }
+      return new IntegerValue(Math.trunc(leftVal / rightVal)); // Integer division
+    case '%':
+      if (rightVal === 0) {
+        return new ErrorValue('Modulo by zero.');
+      }
+      return new IntegerValue(leftVal % rightVal);
+    case '<':
+      return new BooleanValue(leftVal < rightVal);
+    case '>':
+      return new BooleanValue(leftVal > rightVal);
+    case '==':
+      return new BooleanValue(leftVal === rightVal);
+    case '!=':
+      return new BooleanValue(leftVal !== rightVal);
+    case '<=':
+      return new BooleanValue(leftVal <= rightVal);
+    case '>=':
+      return new BooleanValue(leftVal >= rightVal);
+    default:
+      return new ErrorValue(`Unknown integer infix operator: ${operator}`);
+  }
+}
+
+// Helper for Float infix operations
+function evalFloatInfixExpression(
+  operator: string,
+  left: FloatValue,
+  right: FloatValue
+): RuntimeObject {
+  const leftVal = left.value;
+  const rightVal = right.value;
+
+  switch (operator) {
+    case '+':
+      return new FloatValue(leftVal + rightVal);
+    case '-':
+      return new FloatValue(leftVal - rightVal);
+    case '*':
+      return new FloatValue(leftVal * rightVal);
+    case '/':
+      if (rightVal === 0.0) {
+        return new ErrorValue('Division by zero.');
+      }
+      return new FloatValue(leftVal / rightVal);
+    case '<':
+      return new BooleanValue(leftVal < rightVal);
+    case '>':
+      return new BooleanValue(leftVal > rightVal);
+    case '==':
+      return new BooleanValue(leftVal === rightVal);
+    case '!=':
+      return new BooleanValue(leftVal !== rightVal);
+    case '<=':
+      return new BooleanValue(leftVal <= rightVal);
+    case '>=':
+      return new BooleanValue(leftVal >= rightVal);
+    default:
+      return new ErrorValue(`Unknown float infix operator: ${operator}`);
+  }
 }
 
 // Evaluates expressions.
@@ -237,7 +478,26 @@ function evalVarStatement(
   stmt: VarStatement,
   env: Environment
 ): RuntimeObject | null {
-  return null; // Placeholder
+  const varName = stmt.name.value;
+  const initializer = stmt.value;
+  let valueToStore: RuntimeObject = new NullValue();
+
+  if (initializer) {
+    const evaluatedInitializer = evaluate(initializer, env);
+    if (evaluatedInitializer instanceof ErrorValue) {
+      return evaluatedInitializer;
+    }
+    valueToStore =
+      evaluatedInitializer === null ? new NullValue() : evaluatedInitializer;
+  }
+
+  const defineResult = env.define(varName, valueToStore, false);
+
+  if (defineResult instanceof ErrorValue) {
+    return defineResult;
+  }
+
+  return new NullValue();
 }
 
 // Evaluates a const statement.
@@ -245,5 +505,233 @@ function evalConstStatement(
   stmt: ConstStatement,
   env: Environment
 ): RuntimeObject | null {
-  return null; // Placeholder
+  const constName = stmt.name.value;
+  const initializer = stmt.value;
+
+  if (!initializer) {
+    return new ErrorValue(`Constant '${constName}' must be initialized.`);
+  }
+
+  const evaluatedInitializer = evaluate(initializer, env);
+
+  if (evaluatedInitializer instanceof ErrorValue) {
+    return evaluatedInitializer;
+  }
+
+  const valueToStore =
+    evaluatedInitializer === null ? new NullValue() : evaluatedInitializer;
+
+  const defineResult = env.define(constName, valueToStore, true);
+
+  if (defineResult instanceof ErrorValue) {
+    return defineResult;
+  }
+
+  return new NullValue();
+}
+
+function evalExpressionStatementNode(
+  node: ExpressionStatement,
+  env: Environment
+): RuntimeObject | null {
+  return evaluate(node.expression, env);
+}
+
+function evalReturnStatementNode(
+  node: ReturnStatement,
+  env: Environment
+): RuntimeObject | null {
+  const val = evaluate(node.returnValue, env);
+  if (val instanceof ErrorValue) {
+    return val;
+  }
+  return new ReturnValue(val === null ? new NullValue() : val);
+}
+
+function evalAssignmentExpressionNode(
+  node: AssignmentExpression,
+  env: Environment
+): RuntimeObject | null {
+  const targetIdentifier = node.name as Identifier;
+  const targetName = targetIdentifier.value;
+  const valueToAssign = evaluate(node.value, env);
+
+  if (valueToAssign instanceof ErrorValue) {
+    return valueToAssign;
+  }
+
+  const actualValueToAssign =
+    valueToAssign === null ? new NullValue() : valueToAssign;
+
+  const setResult = env.set(targetName, actualValueToAssign);
+
+  if (setResult instanceof ErrorValue) {
+    return setResult;
+  }
+  return setResult;
+}
+
+function evalPrefixExpressionNode(
+  node: PrefixExpression,
+  env: Environment
+): RuntimeObject | null {
+  if (node.operator === '++' || node.operator === '--') {
+    if (!(node.right instanceof Identifier)) {
+      return new ErrorValue(
+        `Invalid operand for prefix '${node.operator}': expected an identifier.`
+      );
+    }
+    const identifierNode = node.right as Identifier;
+    const varName = identifierNode.value;
+    const currentValue = env.get(varName);
+
+    if (currentValue === undefined) {
+      return new ErrorValue(`identifier not found: ${varName}`);
+    }
+
+    let newValueNumber: number;
+    let newRuntimeValue: IntegerValue | FloatValue;
+
+    if (currentValue instanceof IntegerValue) {
+      newValueNumber =
+        node.operator === '++'
+          ? currentValue.value + 1
+          : currentValue.value - 1;
+      newRuntimeValue = new IntegerValue(newValueNumber);
+    } else if (currentValue instanceof FloatValue) {
+      newValueNumber =
+        node.operator === '++'
+          ? currentValue.value + 1
+          : currentValue.value - 1;
+      newRuntimeValue = new FloatValue(newValueNumber);
+    } else {
+      return new ErrorValue(
+        `Type Error: Cannot apply operator '${
+          node.operator
+        }' to type ${currentValue.type()}`
+      );
+    }
+    const updateResult = env.set(varName, newRuntimeValue);
+    if (updateResult instanceof ErrorValue) {
+      return updateResult;
+    }
+    return newRuntimeValue;
+  } else {
+    const prefixRightOperand = evaluate(node.right, env);
+    if (prefixRightOperand instanceof ErrorValue) {
+      return prefixRightOperand;
+    }
+    if (prefixRightOperand === null) {
+      return new ErrorValue(
+        'Operand for prefix expression unexpectedly evaluated to null by main evaluate.'
+      );
+    }
+    // Call the existing helper for non-side-effecting prefix ops
+    return evalPrefixExpression(node.operator, prefixRightOperand);
+  }
+}
+
+function evalInfixExpressionNode(
+  node: InfixExpression,
+  env: Environment
+): RuntimeObject | null {
+  const left = evaluate(node.left, env);
+  if (left instanceof ErrorValue) {
+    return left;
+  }
+  // TODO: Implement short-circuiting for '&&' and '||' here if desired
+  // For &&: if left is falsy, return left (or its JS boolean equivalent wrapped in BooleanValue)
+  // For ||: if left is truthy, return left (or its JS boolean equivalent wrapped in BooleanValue)
+
+  const right = evaluate(node.right, env);
+  if (right instanceof ErrorValue) {
+    return right;
+  }
+
+  return evalInfixExpression(node.operator, left, right);
+}
+
+function evalPostfixExpressionNode(
+  node: PostfixExpression,
+  env: Environment
+): RuntimeObject | ErrorValue {
+  if (!(node.left instanceof Identifier)) {
+    return new ErrorValue(
+      'Invalid left-hand side in postfix operation: expected an identifier.'
+    );
+  }
+  const identifierNode = node.left as Identifier;
+  const varName = identifierNode.value;
+  const originalValue = env.get(varName);
+
+  if (originalValue === undefined) {
+    return new ErrorValue(`identifier not found: ${varName}`);
+  }
+  if (originalValue instanceof ErrorValue) {
+    return originalValue;
+  }
+  if (originalValue === null) {
+    return new ErrorValue(
+      `Identifier '${varName}' resolved to unexpected null.`
+    );
+  }
+
+  let newValueNumber: number;
+  let newRuntimeValue: IntegerValue | FloatValue;
+
+  if (originalValue instanceof IntegerValue) {
+    newValueNumber =
+      node.operator === '++'
+        ? originalValue.value + 1
+        : originalValue.value - 1;
+    newRuntimeValue = new IntegerValue(newValueNumber);
+  } else if (originalValue instanceof FloatValue) {
+    newValueNumber =
+      node.operator === '++'
+        ? originalValue.value + 1
+        : originalValue.value - 1;
+    newRuntimeValue = new FloatValue(newValueNumber);
+  } else {
+    return new ErrorValue(
+      `Type Error: Cannot apply postfix operator '${
+        node.operator
+      }' to type ${originalValue.type()}`
+    );
+  }
+
+  const setResult = env.set(varName, newRuntimeValue);
+  if (setResult instanceof ErrorValue) {
+    return setResult;
+  }
+
+  return originalValue;
+}
+
+function evalFunctionLiteralNode(
+  node: FunctionLiteral,
+  env: Environment
+): RuntimeObject {
+  return new FunctionValue(node.params, node.body, env);
+}
+
+function evalCallExpressionNode(
+  node: CallExpression,
+  env: Environment
+): RuntimeObject | null {
+  const funcToCall = evaluate(node.func, env);
+  if (funcToCall instanceof ErrorValue) {
+    return funcToCall;
+  }
+  if (funcToCall === null || !(funcToCall instanceof FunctionValue)) {
+    const typeStr = funcToCall === null ? 'null' : funcToCall.type();
+    return new ErrorValue(`Cannot call non-function type: ${typeStr}`);
+  }
+
+  const evaluatedArgs = evalExpressions(node.args, env); // Assumes evalExpressions exists and works
+  const firstErrorArg = evaluatedArgs.find((arg) => arg instanceof ErrorValue);
+  if (firstErrorArg) {
+    return firstErrorArg as ErrorValue;
+  }
+  // applyFunction needs to be robust to handle funcToCall here which is FunctionValue
+  return applyFunction(funcToCall, evaluatedArgs); // Assumes applyFunction exists
 }
