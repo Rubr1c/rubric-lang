@@ -8,8 +8,8 @@ export enum TokenType {
   FLOAT = 'FLOAT',
   STRING = 'STRING',
   BOOLEAN = 'BOOLEAN',
-  VOID = 'VOID', 
-  
+  VOID = 'VOID',
+
   STRING_ARR = 'STRING_ARR',
   INT_ARR = 'INT_ARR',
   FLOAT_ARR = 'FLOAT_ARR',
@@ -43,6 +43,7 @@ export enum TokenType {
   AND = 'AND',
   OR = 'OR',
   QUESTION_MARK = 'QUESTION_MARK',
+  TYPE_OF = 'TYPE_OF',
   TEMPLATE_HEAD = 'TEMPLATE_HEAD',
   TEMPLATE_EXPR_START = 'TEMPLATE_EXPR_START',
   TEMPLATE_TEXT = 'TEMPLATE_TEXT',

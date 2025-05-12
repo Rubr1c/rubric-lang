@@ -112,6 +112,10 @@ export class Parser {
       TokenType.FUNCTION,
       this.parseFunctionLiteralExpression.bind(this)
     );
+    this.registerPrefix(
+      TokenType.TYPE_OF,
+      this.parseTypeOfExpression.bind(this)
+    );
     // Register infix parse functions
     this.registerInfix(TokenType.PLUS, this.parseInfixExpression.bind(this));
     this.registerInfix(TokenType.MINUS, this.parseInfixExpression.bind(this));
@@ -928,6 +932,8 @@ export class Parser {
       originalTokenForPos = expression.token;
     } else if (expression instanceof PrefixExpression) {
       const prefixExpr = expression as PrefixExpression;
+      originalTokenForPos = prefixExpr.token;
+
       if (
         prefixExpr.operator === '-' ||
         prefixExpr.operator === '++' ||
@@ -937,7 +943,9 @@ export class Parser {
       } else if (prefixExpr.operator === '!') {
         typeName = 'boolean';
         tokenTypeForTypeNode = TokenType.TYPE_BOOLEAN;
-        originalTokenForPos = prefixExpr.token; // Token of the '!'
+      } else if (prefixExpr.operator === 'typeof') {
+        typeName = 'string';
+        tokenTypeForTypeNode = TokenType.TYPE_STRING;
       } else {
         return null;
       }
@@ -972,7 +980,7 @@ export class Parser {
   }
 
   private parseFunctionLiteralExpression(): Expression | null {
-    const funcToken = this.curToken; // Current token is FUNCTION
+    const funcToken = this.curToken;
 
     if (!this.expectPeek(TokenType.LPAREN)) {
       this.errors.push(
@@ -981,7 +989,6 @@ export class Parser {
       return null;
     }
 
-    // Parse parameters
     const params: Param[] = [];
     if (this.peekToken.type !== TokenType.RPAREN) {
       this.nextToken();
@@ -1030,11 +1037,10 @@ export class Parser {
     if (fnReturnType) {
       actualReturnTypeNode = fnReturnType;
     } else {
-      // Default to void if no return type is specified
       const voidToken: Token = {
         type: TokenType.TYPE_VOID,
         literal: 'void',
-        line: funcToken.line, // Use line/col from the 'function' keyword token
+        line: funcToken.line,
         column: funcToken.column,
       };
       actualReturnTypeNode = new TypeNode(voidToken, 'void');
@@ -1055,8 +1061,23 @@ export class Parser {
     return new FunctionLiteral(funcToken, params, body, actualReturnTypeNode);
   }
 
+  private parseTypeOfExpression(): Expression | null {
+    const token = this.curToken;
+    const operator = token.literal;
+    this.nextToken();
+
+    const right = this.parseExpression(Precedence.PREFIX);
+    if (!right) {
+      this.errors.push(
+        `Expected expression after 'typeof' operator at line ${token.line}`
+      );
+      return null;
+    }
+    return new PrefixExpression(token, operator, right);
+  }
+
   private parseDisplayStatement(): Statement | null {
-    const stmtToken = this.curToken; // Current token is DISPLAY
+    const stmtToken = this.curToken;
 
     if (!this.expectPeek(TokenType.LPAREN)) {
       this.errors.push(

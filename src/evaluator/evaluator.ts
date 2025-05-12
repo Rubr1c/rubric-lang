@@ -297,14 +297,8 @@ function evalIdentifier(node: Identifier, env: Environment): RuntimeObject {
 // Evaluates a prefix expression.
 function evalPrefixExpression(
   operator: string,
-  right: RuntimeObject | null
+  right: RuntimeObject
 ): RuntimeObject {
-  if (right === null) {
-    return new ErrorValue(
-      'Operand for prefix expression is unexpectedly null in helper function'
-    );
-  }
-
   switch (operator) {
     case '!':
       return isTruthy(right) ? new BooleanValue(false) : new BooleanValue(true);
@@ -320,6 +314,27 @@ function evalPrefixExpression(
       return new ErrorValue(
         `Type Error: Cannot apply operator '-' to type ${right.type()}`
       );
+    case 'typeof':
+      switch (right.type()) {
+        case ObjectType.INTEGER:
+          return new StringValue('int');
+        case ObjectType.FLOAT:
+          return new StringValue('float');
+        case ObjectType.BOOLEAN:
+          return new StringValue('boolean');
+        case ObjectType.STRING:
+          return new StringValue('string');
+        case ObjectType.NULL:
+          return new StringValue('null');
+        case ObjectType.FUNCTION:
+          return new StringValue('function');
+        case ObjectType.ERROR:
+          return new StringValue('error');
+        default:
+          return new ErrorValue(
+            `Internal error: Unhandled type for typeof: ${right.type()}`
+          );
+      }
     default:
       return new ErrorValue(
         `Unknown or unhandled prefix operator in helper: ${operator}`

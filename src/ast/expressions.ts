@@ -1,5 +1,6 @@
 import { Token } from '../lexer/tokens';
 import { Expression } from './base';
+import { TypeNode } from './types';
 
 export class Identifier implements Expression {
   public token: Token;
@@ -88,6 +89,27 @@ export class BooleanLiteral implements Expression {
 
   toString(): string {
     return this.value.toString();
+  }
+}
+
+export class ArrayLiteral implements Expression {
+  public token: Token;
+  public type: TypeNode;
+  public elements: Expression[];
+
+  constructor(token: Token, type: TypeNode, elements: Expression[]) {
+    this.token = token;
+    this.type = type;
+    this.elements = elements;
+  }
+
+  tokenLiteral(): string {
+    return this.token.literal;
+  }
+
+  toString(): string {
+    const elementStrings = this.elements.map((el) => el.toString());
+    return `[${elementStrings.join(', ')}]`;
   }
 }
 
@@ -226,5 +248,25 @@ export class CallExpression implements Expression {
   toString(): string {
     const argStrings = this.args.map((arg) => arg.toString());
     return `${this.func.toString()}(${argStrings.join(', ')})`;
+  }
+}
+
+export class IndexExpression implements Expression {
+  public token: Token;
+  public left: Expression;
+  public index: Expression;
+
+  constructor(token: Token, left: Expression, index: Expression) {
+    this.token = token;
+    this.left = left;
+    this.index = index;
+  }
+
+  tokenLiteral(): string {
+    return this.token.literal;
+  }
+
+  toString(): string {
+    return `(${this.left.toString()}[${this.index.toString()}])`;
   }
 }

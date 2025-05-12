@@ -349,6 +349,8 @@ export class Lexer {
         return TokenType.TYPE_FLOAT;
       case 'void':
         return TokenType.TYPE_VOID;
+      case 'typeof':
+        return TokenType.TYPE_OF;
       case 'if':
         return TokenType.IF_STATEMENT;
       case 'else':
