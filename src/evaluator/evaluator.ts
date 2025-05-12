@@ -327,7 +327,7 @@ function evalPrefixExpression(
         case ObjectType.NULL:
           return new StringValue('null');
         case ObjectType.FUNCTION:
-          return new StringValue('function');
+          return new StringValue(right.inspect());
         case ObjectType.ERROR:
           return new StringValue('error');
         default:
@@ -913,7 +913,13 @@ function evalFunctionLiteralNode(
   node: FunctionLiteral,
   env: Environment
 ): RuntimeObject {
-  return new FunctionValue(node.params, node.body, env, undefined);
+  return new FunctionValue(
+    node.params,
+    node.body,
+    env,
+    node.returnType!,
+    undefined
+  );
 }
 
 function evalCallExpressionNode(
@@ -943,7 +949,13 @@ function evalFunctionDeclarationStatementNode(
   env: Environment
 ): RuntimeObject | null {
   const funcName = node.name.value;
-  const funcValue = new FunctionValue(node.params, node.body, env, funcName);
+  const funcValue = new FunctionValue(
+    node.params,
+    node.body,
+    env,
+    node.returnType!,
+    funcName
+  );
 
   const defineResult = env.define(funcName, funcValue, true);
 

@@ -1,5 +1,6 @@
 import { Param } from '../ast/functions';
 import { BlockStatement } from '../ast/statements';
+import { TypeNode } from '../ast';
 import { Environment } from './environment';
 
 // Defines the type of a runtime object.
@@ -98,14 +99,17 @@ export class ErrorValue implements RuntimeObject {
 
 export class FunctionValue implements RuntimeObject {
   public fnName?: string;
+  public returnType: TypeNode;
 
   constructor(
     public params: Param[],
     public body: BlockStatement,
     public env: Environment,
+    public returnTypeNode: TypeNode,
     fnName?: string
   ) {
     this.fnName = fnName;
+    this.returnType = returnTypeNode;
   }
 
   type(): ObjectType {
@@ -113,7 +117,8 @@ export class FunctionValue implements RuntimeObject {
   }
 
   inspect(): string {
-    const paramNames = this.params.map((p) => p.value).join(', ');
-    return `fn(${paramNames}) { ... }`;
+    const paramTypesString = this.params.map((p) => p.type.value).join(', ');
+    const returnTypeString = this.returnType.value;
+    return `fn(${paramTypesString}) => ${returnTypeString}`;
   }
 }
