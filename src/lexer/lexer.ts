@@ -21,7 +21,16 @@ export class Lexer {
 
     switch (this.char) {
       case '=':
-        if (this.peekChar() === '=') {
+        if (this.peekChar() === '>') {
+          const startCol = this.column;
+          this.readChar();
+          token = {
+            type: TokenType.ARROW,
+            literal: '=>',
+            line: this.line,
+            column: startCol,
+          };
+        } else if (this.peekChar() === '=') {
           const startCol = this.column;
           this.readChar();
           token = {

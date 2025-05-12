@@ -310,29 +310,105 @@ export class Parser {
     if (!this.expectPeek(TokenType.COLON)) {
       return null;
     }
-    const nextTypeToken = this.peekToken;
-    const specificValidTypes = [
-      TokenType.TYPE_STRING,
-      TokenType.TYPE_BOOLEAN,
-      TokenType.TYPE_INT,
-      TokenType.TYPE_FLOAT,
-      TokenType.TYPE_VOID,
-    ];
 
-    if (
-      !specificValidTypes.includes(nextTypeToken.type) &&
-      nextTypeToken.type !== TokenType.IDENTIFIER
-    ) {
-      this.errors.push(
-        `Invalid token for type annotation: '${nextTypeToken.literal}' (${nextTypeToken.type}) at line ${nextTypeToken.line}. Expected a built-in type (string, boolean, int, float) or an identifier for the type name.`
-      );
+    if (this.peekTokenIs(TokenType.FUNCTION)) {
       this.nextToken();
+      const fnToken = this.curToken;
+
+      if (!this.expectPeek(TokenType.LPAREN)) {
+        this.errors.push(
+          `Expected '(' after 'fn' in function type annotation at line ${fnToken.line}`
+        );
+        return null;
+      }
+
+      const paramTypeStrings: string[] = [];
+      if (!this.peekTokenIs(TokenType.RPAREN)) {
+        do {
+          this.nextToken();
+          const paramTypeToken = this.curToken;
+          const validParamTypes = [
+            TokenType.TYPE_STRING,
+            TokenType.TYPE_BOOLEAN,
+            TokenType.TYPE_INT,
+            TokenType.TYPE_FLOAT,
+            TokenType.TYPE_VOID,
+            TokenType.IDENTIFIER,
+          ];
+          if (validParamTypes.includes(paramTypeToken.type)) {
+            paramTypeStrings.push(paramTypeToken.literal);
+          } else {
+            this.errors.push(
+              `Invalid parameter type '${paramTypeToken.literal}' in function type annotation at line ${paramTypeToken.line}`
+            );
+            return null;
+          }
+        } while (this.peekTokenIs(TokenType.COMMA) && (this.nextToken(), true)); // Consume COMMA and continue
+      }
+
+      if (!this.expectPeek(TokenType.RPAREN)) {
+        this.errors.push(
+          `Expected ')' or ',' after parameter type in function type annotation at line ${this.curToken.line}`
+        );
+        return null;
+      }
+
+      if (!this.expectPeek(TokenType.ARROW)) {
+        this.errors.push(
+          `Expected ' => ' after parameters in function type annotation at line ${this.curToken.line}`
+        );
+        return null;
+      }
+
       this.nextToken();
-      return null;
+      const returnTypeToken = this.curToken;
+      const validReturnTypes = [
+        TokenType.TYPE_STRING,
+        TokenType.TYPE_BOOLEAN,
+        TokenType.TYPE_INT,
+        TokenType.TYPE_FLOAT,
+        TokenType.TYPE_VOID,
+        TokenType.IDENTIFIER,
+      ];
+      let returnTypeString = '';
+      if (validReturnTypes.includes(returnTypeToken.type)) {
+        returnTypeString = returnTypeToken.literal;
+      } else {
+        this.errors.push(
+          `Invalid return type '${returnTypeToken.literal}' in function type annotation at line ${returnTypeToken.line}`
+        );
+        return null;
+      }
+
+      const fullFunctionTypeString = `fn(${paramTypeStrings.join(
+        ', '
+      )}) => ${returnTypeString}`;
+      return new TypeNode(fnToken, fullFunctionTypeString);
+    } else {
+      const nextTypeToken = this.peekToken;
+      const specificValidTypes = [
+        TokenType.TYPE_STRING,
+        TokenType.TYPE_BOOLEAN,
+        TokenType.TYPE_INT,
+        TokenType.TYPE_FLOAT,
+        TokenType.TYPE_VOID,
+      ];
+
+      if (
+        !specificValidTypes.includes(nextTypeToken.type) &&
+        nextTypeToken.type !== TokenType.IDENTIFIER
+      ) {
+        this.errors.push(
+          `Invalid token for type annotation: '${nextTypeToken.literal}' (${nextTypeToken.type}) at line ${nextTypeToken.line}. Expected a built-in type (string, boolean, int, float) or an identifier for the type name.`
+        );
+        this.nextToken();
+        this.nextToken();
+        return null;
+      }
+
+      this.nextToken();
+      return new TypeNode(this.curToken, this.curToken.literal);
     }
-
-    this.nextToken();
-    return new TypeNode(this.curToken, this.curToken.literal);
   }
 
   private curTokenIs(type: TokenType): boolean {
